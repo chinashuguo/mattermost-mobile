@@ -2,7 +2,8 @@
 // See LICENSE.txt for license information.
 
 import {batchActions} from 'redux-batched-actions';
-import {AsyncStorage, Platform} from 'react-native';
+import {Platform} from 'react-native';
+import AsyncStorage from '@react-native-community/async-storage';
 import {createBlacklistFilter} from 'redux-persist-transform-filter';
 import {createTransform, persistStore} from 'redux-persist';
 
@@ -145,7 +146,6 @@ export default function configureAppStore(initialState) {
             const persistor = persistStore(store, {storage: AsyncStorage, ...options}, () => {
                 store.dispatch({
                     type: General.STORE_REHYDRATION_COMPLETE,
-                    complete: true,
                 });
             });
 
@@ -205,6 +205,9 @@ export default function configureAppStore(initialState) {
                             data: initialState,
                         },
                         {
+                            type: General.STORE_REHYDRATION_COMPLETE,
+                        },
+                        {
                             type: ViewTypes.SERVER_URL_CHANGED,
                             serverUrl: state.entities.general.credentials.url || state.views.selectServer.serverUrl,
                         },
@@ -245,7 +248,6 @@ export default function configureAppStore(initialState) {
                             type: GeneralTypes.RECEIVED_APP_CREDENTIALS,
                             data: {
                                 url: state.entities.general.credentials.url,
-                                token: state.entities.general.credentials.token,
                             },
                         },
                         {
@@ -255,6 +257,9 @@ export default function configureAppStore(initialState) {
                         {
                             type: GeneralTypes.RECEIVED_SERVER_VERSION,
                             data: state.entities.general.serverVersion,
+                        },
+                        {
+                            type: General.STORE_REHYDRATION_COMPLETE,
                         },
                     ], 'BATCH_FOR_RESTART'));
 

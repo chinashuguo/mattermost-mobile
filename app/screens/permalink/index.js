@@ -5,7 +5,11 @@ import {bindActionCreators} from 'redux';
 import {connect} from 'react-redux';
 
 import {getChannel as getChannelAction, joinChannel} from 'mattermost-redux/actions/channels';
-import {getPostsAfter, getPostsBefore, getPostThread, selectPost} from 'mattermost-redux/actions/posts';
+import {
+    getPostsAround,
+    getPostThread,
+    selectPost,
+} from 'mattermost-redux/actions/posts';
 import {makeGetChannel, getMyChannelMemberships} from 'mattermost-redux/selectors/entities/channels';
 import {makeGetPostIdsAroundPost, getPost} from 'mattermost-redux/selectors/entities/posts';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
@@ -13,12 +17,17 @@ import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
 import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
 
 import {
+    goToScreen,
+    dismissModal,
+    dismissAllModals,
+    resetToChannel,
+} from 'app/actions/navigation';
+import {
     handleSelectChannel,
     loadThreadIfNecessary,
     setChannelDisplayName,
     setChannelLoading,
 } from 'app/actions/views/channel';
-import {showSearchModal} from 'app/actions/views/search';
 import {handleTeamChange} from 'app/actions/views/select_team';
 
 import Permalink from './permalink';
@@ -60,8 +69,7 @@ function makeMapStateToProps() {
 function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators({
-            getPostsAfter,
-            getPostsBefore,
+            getPostsAround,
             getPostThread,
             getChannel: getChannelAction,
             handleSelectChannel,
@@ -71,9 +79,12 @@ function mapDispatchToProps(dispatch) {
             selectPost,
             setChannelDisplayName,
             setChannelLoading,
-            showSearchModal,
+            goToScreen,
+            dismissModal,
+            dismissAllModals,
+            resetToChannel,
         }, dispatch),
     };
 }
 
-export default connect(makeMapStateToProps, mapDispatchToProps, null, {withRef: true})(Permalink);
+export default connect(makeMapStateToProps, mapDispatchToProps, null, {forwardRef: true})(Permalink);

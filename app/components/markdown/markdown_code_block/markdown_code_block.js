@@ -24,7 +24,9 @@ const MAX_LINES = 4;
 
 export default class MarkdownCodeBlock extends React.PureComponent {
     static propTypes = {
-        navigator: PropTypes.object.isRequired,
+        actions: PropTypes.shape({
+            goToScreen: PropTypes.func.isRequired,
+        }).isRequired,
         theme: PropTypes.object.isRequired,
         language: PropTypes.string,
         content: PropTypes.string.isRequired,
@@ -40,10 +42,14 @@ export default class MarkdownCodeBlock extends React.PureComponent {
     };
 
     handlePress = preventDoubleTap(() => {
-        const {navigator, theme} = this.props;
+        const {actions, language, content} = this.props;
         const {intl} = this.context;
+        const screen = 'Code';
+        const passProps = {
+            content,
+        };
 
-        const languageDisplayName = getDisplayNameForLanguage(this.props.language);
+        const languageDisplayName = getDisplayNameForLanguage(language);
         let title;
         if (languageDisplayName) {
             title = intl.formatMessage(
@@ -62,29 +68,15 @@ export default class MarkdownCodeBlock extends React.PureComponent {
             });
         }
 
-        navigator.push({
-            screen: 'Code',
-            title,
-            animated: true,
-            backButtonTitle: '',
-            passProps: {
-                content: this.props.content,
-            },
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-        });
+        actions.goToScreen(screen, title, passProps);
     });
 
     handleLongPress = async () => {
         const {formatMessage} = this.context.intl;
 
-        const config = await mattermostManaged.getLocalConfig();
+        const config = mattermostManaged.getCachedConfig();
 
-        if (config.copyAndPasteProtection !== 'true') {
+        if (config?.copyAndPasteProtection !== 'true') {
             const cancelText = formatMessage({id: 'mobile.post.cancel', defaultMessage: 'Cancel'});
             const actionText = formatMessage({id: 'mobile.markdown.code.copy_code', defaultMessage: 'Copy Code'});
             BottomSheet.showBottomSheetWithOptions({

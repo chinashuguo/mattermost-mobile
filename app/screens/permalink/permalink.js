@@ -4,6 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {
+    Platform,
     Text,
     TouchableOpacity,
     View,
@@ -12,9 +13,11 @@ import {intlShape} from 'react-intl';
 import * as Animatable from 'react-native-animatable';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import AwesomeIcon from 'react-native-vector-icons/FontAwesome';
+import {Navigation} from 'react-native-navigation';
 
 import {General} from 'mattermost-redux/constants';
 import EventEmitter from 'mattermost-redux/utils/event_emitter';
+import {getLastPostIndex} from 'mattermost-redux/utils/post_list';
 
 import FormattedText from 'app/components/formatted_text';
 import Loading from 'app/components/loading';
@@ -44,8 +47,7 @@ Animatable.initializeRegistryWithDefinitions({
 export default class Permalink extends PureComponent {
     static propTypes = {
         actions: PropTypes.shape({
-            getPostsAfter: PropTypes.func.isRequired,
-            getPostsBefore: PropTypes.func.isRequired,
+            getPostsAround: PropTypes.func.isRequired,
             getPostThread: PropTypes.func.isRequired,
             getChannel: PropTypes.func.isRequired,
             handleSelectChannel: PropTypes.func.isRequired,
@@ -55,6 +57,10 @@ export default class Permalink extends PureComponent {
             selectPost: PropTypes.func.isRequired,
             setChannelDisplayName: PropTypes.func.isRequired,
             setChannelLoading: PropTypes.func.isRequired,
+            goToScreen: PropTypes.func.isRequired,
+            dismissModal: PropTypes.func.isRequired,
+            dismissAllModals: PropTypes.func.isRequired,
+            resetToChannel: PropTypes.func.isRequired,
         }).isRequired,
         channelId: PropTypes.string,
         channelIsArchived: PropTypes.bool,
@@ -65,7 +71,6 @@ export default class Permalink extends PureComponent {
         focusedPostId: PropTypes.string.isRequired,
         isPermalink: PropTypes.bool,
         myMembers: PropTypes.object.isRequired,
-        navigator: PropTypes.object,
         onClose: PropTypes.func,
         onPress: PropTypes.func,
         postIds: PropTypes.array,
@@ -130,8 +135,6 @@ export default class Permalink extends PureComponent {
             loading = false;
         }
 
-        props.navigator.setOnNavigatorEvent(this.onNavigatorEvent);
-
         this.state = {
             title: channelName,
             loading,
@@ -145,6 +148,8 @@ export default class Permalink extends PureComponent {
     }
 
     componentDidMount() {
+        this.navigationEventListener = Navigation.events().bindComponent(this);
+
         this.mounted = true;
 
         if (this.state.loading) {
@@ -162,40 +167,36 @@ export default class Permalink extends PureComponent {
         this.mounted = false;
     }
 
+    navigationButtonPressed({buttonId}) {
+        if (buttonId === 'backPress') {
+            this.handleClose();
+        }
+    }
+
     goToThread = preventDoubleTap((post) => {
-        const {actions, navigator, theme} = this.props;
+        const {actions} = this.props;
         const channelId = post.channel_id;
         const rootId = (post.root_id || post.id);
-
-        actions.loadThreadIfNecessary(rootId, channelId);
-        actions.selectPost(rootId);
-
-        const options = {
-            screen: 'Thread',
-            animated: true,
-            backButtonTitle: '',
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                channelId,
-                rootId,
-            },
+        const screen = 'Thread';
+        const title = '';
+        const passProps = {
+            channelId,
+            rootId,
         };
 
-        navigator.push(options);
+        actions.loadThreadIfNecessary(rootId);
+        actions.selectPost(rootId);
+
+        actions.goToScreen(screen, title, passProps);
     });
 
     handleClose = () => {
-        const {actions, navigator, onClose} = this.props;
+        const {actions, onClose} = this.props;
         if (this.refs.view) {
             this.mounted = false;
             this.refs.view.zoomOut().then(() => {
                 actions.selectPost('');
-                navigator.dismissModal({animationType: 'none'});
+                actions.dismissModal();
 
                 if (onClose) {
                     onClose();
@@ -224,7 +225,7 @@ export default class Permalink extends PureComponent {
 
     jumpToChannel = (channelId, channelDisplayName) => {
         if (channelId) {
-            const {actions, channelTeamId, currentTeamId, navigator, onClose, theme} = this.props;
+            const {actions, channelTeamId, currentTeamId, onClose} = this.props;
             const currentChannelId = this.props.channelId;
             const {
                 handleSelectChannel,
@@ -238,23 +239,13 @@ export default class Permalink extends PureComponent {
             if (channelId === currentChannelId) {
                 EventEmitter.emit('reset_channel');
             } else {
-                navigator.resetTo({
-                    screen: 'Channel',
-                    animated: true,
-                    animationType: 'fade',
-                    navigatorStyle: {
-                        navBarHidden: true,
-                        statusBarHidden: false,
-                        statusBarHideWithNavBar: false,
-                        screenBackgroundColor: theme.centerChannelBg,
-                    },
-                    passProps: {
-                        disableTermsModal: true,
-                    },
-                });
+                const passProps = {
+                    disableTermsModal: true,
+                };
+                actions.resetToChannel(passProps);
             }
 
-            navigator.dismissAllModals({animationType: 'slide-down'});
+            actions.dismissAllModals();
 
             if (onClose) {
                 onClose();
@@ -307,23 +298,10 @@ export default class Permalink extends PureComponent {
             }
         }
 
-        await Promise.all([
-            actions.getPostsBefore(focusChannelId, focusedPostId, 0, 10),
-            actions.getPostsAfter(focusChannelId, focusedPostId, 0, 10),
-        ]);
+        await actions.getPostsAround(focusChannelId, focusedPostId, 10);
 
         if (this.mounted) {
             this.setState({loading: false});
-        }
-    };
-
-    onNavigatorEvent = (event) => {
-        switch (event.id) {
-        case 'backPress':
-            this.handleClose();
-            break;
-        default:
-            break;
         }
     };
 
@@ -355,7 +333,6 @@ export default class Permalink extends PureComponent {
         const {
             currentUserId,
             focusedPostId,
-            navigator,
             theme,
         } = this.props;
         const {
@@ -397,9 +374,9 @@ export default class Permalink extends PureComponent {
                     onPermalinkPress={this.handlePermalinkPress}
                     onPostPress={this.goToThread}
                     postIds={postIdsState}
+                    lastPostIndex={Platform.OS === 'android' ? getLastPostIndex(postIdsState) : -1}
                     currentUserId={currentUserId}
                     lastViewedAt={0}
-                    navigator={navigator}
                     highlightPinnedOrFlagged={false}
                 />
             );

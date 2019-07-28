@@ -17,17 +17,21 @@
 #else
 #import "RNSentry.h" // This is used for versions of react < 0.40
 #endif
-#import "RCCManager.h"
+#import <ReactNativeNavigation/ReactNativeNavigation.h>
 #import "RNNotifications.h"
 #import <UploadAttachments/UploadAttachments-Swift.h>
 #import <UserNotifications/UserNotifications.h>
+#import "Mattermost-Swift.h"
+#import <os/log.h>
 
 @implementation AppDelegate
 
 NSString* const NotificationClearAction = @"clear";
 
 -(void)application:(UIApplication *)application handleEventsForBackgroundURLSession:(NSString *)identifier completionHandler:(void (^)(void))completionHandler {
+  os_log(OS_LOG_DEFAULT, "Mattermost will attach session from handleEventsForBackgroundURLSession!! identifier=%{public}@", identifier);
   [[UploadSession shared] attachSessionWithIdentifier:identifier completionHandler:completionHandler];
+  os_log(OS_LOG_DEFAULT, "Mattermost session ATTACHED from handleEventsForBackgroundURLSession!! identifier=%{public}@", identifier);
 }
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
@@ -49,14 +53,13 @@ NSString* const NotificationClearAction = @"clear";
     [[NSUserDefaults standardUserDefaults] synchronize];
   }
 
-  NSURL *jsCodeLocation;
+  NSURL *jsCodeLocation = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index" fallbackResource:nil];
+  [ReactNativeNavigation bootstrap:jsCodeLocation launchOptions:launchOptions];
 
-  jsCodeLocation = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index" fallbackResource:nil];
-
-  self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-  self.window.backgroundColor = [UIColor whiteColor];
-  [[RCCManager sharedInstance] initBridgeWithBundleURL:jsCodeLocation launchOptions:launchOptions];
   [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error: nil];
+
+  os_log(OS_LOG_DEFAULT, "Mattermost started!!");
+
 
   return YES;
 }
@@ -113,10 +116,19 @@ NSString* const NotificationClearAction = @"clear";
   UIApplicationState state = [UIApplication sharedApplication].applicationState;
   NSString* action = [userInfo objectForKey:@"type"];
   NSString* channelId = [userInfo objectForKey:@"channel_id"];
+  NSString* ackId = [userInfo objectForKey:@"ack_id"];
 
   if (action && [action isEqualToString: NotificationClearAction]) {
     // If received a notification that a channel was read, remove all notifications from that channel (only with app in foreground/background)
     [self cleanNotificationsFromChannel:channelId andUpdateBadge:NO];
+    RuntimeUtils *utils = [[RuntimeUtils alloc] init];
+    [[UploadSession shared] notificationReceiptWithNotificationId:ackId receivedAt:round([[NSDate date] timeIntervalSince1970] * 1000.0) type:action];
+    [utils delayWithSeconds:0.2 closure:^(void) {
+      // This is to notify the NotificationCenter that something has changed.
+      completionHandler(UIBackgroundFetchResultNewData);
+    }];
+
+    return;
   } else if (state == UIApplicationStateInactive) {
     // When the notification is opened
     [self cleanNotificationsFromChannel:channelId andUpdateBadge:NO];

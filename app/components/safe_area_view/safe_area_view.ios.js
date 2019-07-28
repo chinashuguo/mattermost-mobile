@@ -6,7 +6,10 @@ import PropTypes from 'prop-types';
 import {Dimensions, Keyboard, NativeModules, View} from 'react-native';
 import SafeArea from 'react-native-safe-area';
 
+import EventEmitter from 'mattermost-redux/utils/event_emitter';
+
 import {DeviceTypes} from 'app/constants';
+import mattermostManaged from 'app/mattermost_managed';
 
 const {StatusBarManager} = NativeModules;
 
@@ -20,7 +23,6 @@ export default class SafeAreaIos extends PureComponent {
         forceTop: PropTypes.number,
         keyboardOffset: PropTypes.number.isRequired,
         navBarBackgroundColor: PropTypes.string,
-        navigator: PropTypes.object,
         headerComponent: PropTypes.node,
         theme: PropTypes.object.isRequired,
     };
@@ -32,16 +34,12 @@ export default class SafeAreaIos extends PureComponent {
     constructor(props) {
         super(props);
 
-        if (props.navigator) {
-            props.navigator.setOnNavigatorEvent(this.onNavigatorEvent);
-        }
-
         this.state = {
             keyboard: false,
             safeAreaInsets: {
                 top: DeviceTypes.IS_IPHONE_X ? 44 : 20,
                 left: 0,
-                bottom: DeviceTypes.IS_IPHONE_X ? 34 : 15,
+                bottom: DeviceTypes.IS_IPHONE_X || mattermostManaged.hasSafeAreaInsets ? 20 : 0,
                 right: 0,
             },
             statusBarHeight: 20,
@@ -56,6 +54,7 @@ export default class SafeAreaIos extends PureComponent {
 
     componentDidMount() {
         Dimensions.addEventListener('change', this.getSafeAreaInsets);
+        EventEmitter.on('update_safe_area_view', this.getSafeAreaInsets);
         this.keyboardDidShowListener = Keyboard.addListener('keyboardWillShow', this.keyboardWillShow);
         this.keyboardDidHideListener = Keyboard.addListener('keyboardWillHide', this.keyboardWillHide);
         this.getStatusBarHeight();
@@ -64,6 +63,7 @@ export default class SafeAreaIos extends PureComponent {
     componentWillUnmount() {
         this.mounted = false;
         Dimensions.removeEventListener('change', this.getSafeAreaInsets);
+        EventEmitter.off('update_safe_area_view', this.getSafeAreaInsets);
         this.keyboardDidShowListener.remove();
         this.keyboardDidHideListener.remove();
         this.mounted = false;
@@ -86,7 +86,7 @@ export default class SafeAreaIos extends PureComponent {
     getSafeAreaInsets = () => {
         this.getStatusBarHeight();
 
-        if (DeviceTypes.IS_IPHONE_X) {
+        if (DeviceTypes.IS_IPHONE_X || mattermostManaged.hasSafeAreaInsets) {
             SafeArea.getSafeAreaInsetsForRootView().then((result) => {
                 const {safeAreaInsets} = result;
 
@@ -103,15 +103,6 @@ export default class SafeAreaIos extends PureComponent {
 
     keyboardWillShow = () => {
         this.setState({keyboard: true});
-    };
-
-    onNavigatorEvent = (event) => {
-        switch (event.id) {
-        case 'willAppear':
-        case 'didDisappear':
-            this.getSafeAreaInsets();
-            break;
-        }
     };
 
     renderTopBar = () => {
@@ -173,7 +164,7 @@ export default class SafeAreaIos extends PureComponent {
         }
 
         let offset = 0;
-        if (keyboardOffset && DeviceTypes.IS_IPHONE_X) {
+        if (keyboardOffset && mattermostManaged.hasSafeAreaInsets) {
             offset = keyboardOffset;
         }
 
@@ -186,7 +177,7 @@ export default class SafeAreaIos extends PureComponent {
             >
                 {this.renderTopBar()}
                 {children}
-                <View style={{height: keyboard ? offset : safeAreaInsets.bottom - 15, backgroundColor: bottomColor}}>
+                <View style={{height: keyboard ? offset : safeAreaInsets.bottom, backgroundColor: bottomColor}}>
                     {footerComponent}
                 </View>
             </View>

@@ -12,15 +12,15 @@ import {
     View,
 } from 'react-native';
 import AwesomeIcon from 'react-native-vector-icons/FontAwesome';
-
-import {RequestStatus} from 'mattermost-redux/constants';
+import {Navigation} from 'react-native-navigation';
 
 import {debounce} from 'mattermost-redux/actions/helpers';
+import {RequestStatus} from 'mattermost-redux/constants';
+import {isDateLine, getDateForDateLine} from 'mattermost-redux/utils/post_list';
 
 import Autocomplete from 'app/components/autocomplete';
 import KeyboardLayout from 'app/components/layout/keyboard_layout';
 import DateHeader from 'app/components/post_list/date_header';
-import {isDateLine} from 'app/components/post_list/date_header/utils';
 import FormattedText from 'app/components/formatted_text';
 import Loading from 'app/components/loading';
 import PostListRetry from 'app/components/post_list_retry';
@@ -56,11 +56,14 @@ export default class Search extends PureComponent {
             getMorePostsForSearch: PropTypes.func.isRequired,
             selectFocusedPostId: PropTypes.func.isRequired,
             selectPost: PropTypes.func.isRequired,
+            dismissModal: PropTypes.func.isRequired,
+            goToScreen: PropTypes.func.isRequired,
+            showModalOverCurrentContext: PropTypes.func.isRequired,
         }).isRequired,
+        componentId: PropTypes.string.isRequired,
         currentTeamId: PropTypes.string.isRequired,
         initialValue: PropTypes.string,
         isLandscape: PropTypes.bool.isRequired,
-        navigator: PropTypes.object,
         postIds: PropTypes.array,
         archivedPostIds: PropTypes.arrayOf(PropTypes.string),
         recent: PropTypes.array.isRequired,
@@ -86,24 +89,17 @@ export default class Search extends PureComponent {
     constructor(props) {
         super(props);
 
-        props.navigator.setOnNavigatorEvent(this.onNavigatorEvent);
-
         this.contentOffsetY = 0;
         this.state = {
             channelName: '',
             cursorPosition: 0,
             value: props.initialValue,
-            managedConfig: {},
             recent: props.recent,
         };
     }
 
-    componentWillMount() {
-        this.listenerId = mattermostManaged.addEventListener('change', this.setManagedConfig);
-    }
-
     componentDidMount() {
-        this.setManagedConfig();
+        this.navigationEventListener = Navigation.events().bindComponent(this);
 
         if (this.props.initialValue) {
             this.search(this.props.initialValue);
@@ -148,8 +144,14 @@ export default class Search extends PureComponent {
         }
     }
 
-    componentWillUnmount() {
-        mattermostManaged.removeEventListener(this.listenerId);
+    navigationButtonPressed({buttonId}) {
+        if (buttonId === 'backPress') {
+            if (this.state.preview) {
+                this.refs.preview.handleClose();
+            } else {
+                this.props.actions.dismissModal();
+            }
+        }
     }
 
     archivedIndicator = (postID, style) => {
@@ -177,42 +179,32 @@ export default class Search extends PureComponent {
     };
 
     cancelSearch = preventDoubleTap(() => {
-        const {navigator} = this.props;
         this.handleTextChanged('', true);
-        navigator.dismissModal({animationType: 'slide-down'});
+        this.props.actions.dismissModal();
     });
 
     goToThread = (post) => {
-        const {actions, navigator, theme} = this.props;
+        const {actions} = this.props;
         const channelId = post.channel_id;
         const rootId = (post.root_id || post.id);
 
         Keyboard.dismiss();
-        actions.loadThreadIfNecessary(rootId, channelId);
+        actions.loadThreadIfNecessary(rootId);
         actions.selectPost(rootId);
 
-        const options = {
-            screen: 'Thread',
-            animated: true,
-            backButtonTitle: '',
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                channelId,
-                rootId,
-            },
+        const screen = 'Thread';
+        const title = '';
+        const passProps = {
+            channelId,
+            rootId,
         };
 
-        navigator.push(options);
+        actions.goToScreen(screen, title, passProps);
     };
 
     handleHashtagPress = (hashtag) => {
         if (this.showingPermalink) {
-            this.props.navigator.dismissModal();
+            this.props.actions.dismissModal();
             this.handleClosePermalink();
         }
 
@@ -310,16 +302,6 @@ export default class Search extends PureComponent {
         }
     }, 100);
 
-    onNavigatorEvent = (event) => {
-        if (event.id === 'backPress') {
-            if (this.state.preview) {
-                this.refs.preview.getWrappedInstance().handleClose();
-            } else {
-                this.props.navigator.dismissModal();
-            }
-        }
-    };
-
     previewPost = (post) => {
         Keyboard.dismiss();
 
@@ -366,7 +348,6 @@ export default class Search extends PureComponent {
 
     renderPost = ({item, index}) => {
         const {postIds, theme} = this.props;
-        const {managedConfig} = this.state;
         const style = getStyleFromTheme(theme);
 
         if (item.id) {
@@ -380,7 +361,7 @@ export default class Search extends PureComponent {
         if (isDateLine(item)) {
             return (
                 <DateHeader
-                    dateLineString={item}
+                    date={getDateForDateLine(item)}
                     index={index}
                 />
             );
@@ -400,10 +381,9 @@ export default class Search extends PureComponent {
                     postId={item}
                     previewPost={this.previewPost}
                     goToThread={this.goToThread}
-                    navigator={this.props.navigator}
                     onHashtagPress={this.handleHashtagPress}
                     onPermalinkPress={this.handlePermalinkPress}
-                    managedConfig={managedConfig}
+                    managedConfig={mattermostManaged.getCachedConfig()}
                     skipPinnedHeader={true}
                 />
                 {separator}
@@ -459,41 +439,25 @@ export default class Search extends PureComponent {
         this.search(this.state.value.trim());
     };
 
-    setManagedConfig = async (config) => {
-        let nextConfig = config;
-        if (!nextConfig) {
-            nextConfig = await mattermostManaged.getLocalConfig();
-        }
-
-        this.setState({
-            managedConfig: nextConfig,
-        });
-    };
-
     showPermalinkView = (postId, isPermalink) => {
-        const {actions, navigator} = this.props;
+        const {actions} = this.props;
 
         actions.selectFocusedPostId(postId);
 
         if (!this.showingPermalink) {
+            const screen = 'Permalink';
+            const passProps = {
+                isPermalink,
+                onClose: this.handleClosePermalink,
+            };
             const options = {
-                screen: 'Permalink',
-                animationType: 'none',
-                backButtonTitle: '',
-                overrideBackPress: true,
-                navigatorStyle: {
-                    navBarHidden: true,
-                    screenBackgroundColor: changeOpacity('#000', 0.2),
-                    modalPresentationStyle: 'overCurrentContext',
-                },
-                passProps: {
-                    isPermalink,
-                    onClose: this.handleClosePermalink,
+                layout: {
+                    backgroundColor: changeOpacity('#000', 0.2),
                 },
             };
 
             this.showingPermalink = true;
-            navigator.showModal(options);
+            actions.showModalOverCurrentContext(screen, passProps, options);
         }
     };
 

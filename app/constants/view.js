@@ -20,6 +20,13 @@ export const SidebarSectionTypes = {
     ALPHA: 'alpha',
 };
 
+export const NotificationLevels = {
+    DEFAULT: 'default',
+    ALL: 'all',
+    MENTION: 'mention',
+    NONE: 'none',
+};
+
 const ViewTypes = keyMirror({
     DATA_CLEANUP: null,
     SERVER_URL_CHANGED: null,
@@ -35,7 +42,6 @@ const ViewTypes = keyMirror({
     COMMENT_DRAFT_SELECTION_CHANGED: null,
 
     NOTIFICATION_IN_APP: null,
-    NOTIFICATION_TAPPED: null,
 
     SET_POST_DRAFT: null,
     SET_COMMENT_DRAFT: null,
@@ -80,9 +86,6 @@ const ViewTypes = keyMirror({
 
     INCREMENT_EMOJI_PICKER_PAGE: null,
 
-    LAUNCH_LOGIN: null,
-    LAUNCH_CHANNEL: null,
-
     SET_DEEP_LINK_URL: null,
 
     SET_PROFILE_IMAGE_URI: null,
@@ -107,6 +110,9 @@ export default {
     IOSX_TOP_PORTRAIT: 88,
     STATUS_BAR_HEIGHT: 20,
     PROFILE_PICTURE_SIZE: 32,
+    PROFILE_PICTURE_EMOJI_SIZE: 28,
     DATA_SOURCE_USERS: 'users',
     DATA_SOURCE_CHANNELS: 'channels',
+    NotificationLevels,
+    SidebarSectionTypes,
 };

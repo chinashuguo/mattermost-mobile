@@ -9,6 +9,7 @@ import {
     Platform,
     View,
 } from 'react-native';
+import {Navigation} from 'react-native-navigation';
 
 import {debounce} from 'mattermost-redux/actions/helpers';
 import {General} from 'mattermost-redux/constants';
@@ -32,13 +33,20 @@ export default class ChannelAddMembers extends PureComponent {
             getProfilesNotInChannel: PropTypes.func.isRequired,
             handleAddChannelMembers: PropTypes.func.isRequired,
             searchProfiles: PropTypes.func.isRequired,
+            setButtons: PropTypes.func.isRequired,
+            popTopScreen: PropTypes.func.isRequired,
         }).isRequired,
+        componentId: PropTypes.string,
         currentChannelId: PropTypes.string.isRequired,
+        currentChannelGroupConstrained: PropTypes.bool,
         currentTeamId: PropTypes.string.isRequired,
         currentUserId: PropTypes.string.isRequired,
         profilesNotInChannel: PropTypes.array.isRequired,
-        navigator: PropTypes.object,
         theme: PropTypes.object.isRequired,
+    };
+
+    static defaultProps = {
+        currentChannelGroupConstrained: false,
     };
 
     static contextTypes = {
@@ -61,19 +69,20 @@ export default class ChannelAddMembers extends PureComponent {
         };
 
         this.addButton = {
-            disabled: true,
+            enalbed: false,
             id: 'add-members',
-            title: context.intl.formatMessage({id: 'integrations.add', defaultMessage: 'Add'}),
+            text: context.intl.formatMessage({id: 'integrations.add', defaultMessage: 'Add'}),
             showAsAction: 'always',
         };
 
-        props.navigator.setOnNavigatorEvent(this.onNavigatorEvent);
-        props.navigator.setButtons({
+        props.actions.setButtons(props.componentId, {
             rightButtons: [this.addButton],
         });
     }
 
     componentDidMount() {
+        this.navigationEventListener = Navigation.events().bindComponent(this);
+
         const {actions, currentTeamId} = this.props;
 
         actions.getTeamStats(currentTeamId);
@@ -83,14 +92,20 @@ export default class ChannelAddMembers extends PureComponent {
     }
 
     componentDidUpdate(prevProps) {
-        const {navigator, theme} = this.props;
+        const {componentId, theme} = this.props;
         const {adding, selectedIds} = this.state;
         const enabled = Object.keys(selectedIds).length > 0 && !adding;
 
         this.enableAddOption(enabled);
 
         if (theme !== prevProps.theme) {
-            setNavigatorStyles(navigator, theme);
+            setNavigatorStyles(componentId, theme);
+        }
+    }
+
+    navigationButtonPressed({buttonId}) {
+        if (buttonId === this.addButton.id) {
+            this.handleAddMembersPress();
         }
     }
 
@@ -99,12 +114,13 @@ export default class ChannelAddMembers extends PureComponent {
     };
 
     close = () => {
-        this.props.navigator.pop({animated: true});
+        this.props.actions.popTopScreen();
     };
 
     enableAddOption = (enabled) => {
-        this.props.navigator.setButtons({
-            rightButtons: [{...this.addButton, disabled: !enabled}],
+        const {actions, componentId} = this.props;
+        actions.setButtons(componentId, {
+            rightButtons: [{...this.addButton, enabled}],
         });
     };
 
@@ -112,11 +128,12 @@ export default class ChannelAddMembers extends PureComponent {
         const {loading, term} = this.state;
         if (this.next && !loading && !term) {
             this.setState({loading: true}, () => {
-                const {actions, currentChannelId, currentTeamId} = this.props;
+                const {actions, currentChannelId, currentChannelGroupConstrained, currentTeamId} = this.props;
 
                 actions.getProfilesNotInChannel(
                     currentTeamId,
                     currentChannelId,
+                    currentChannelGroupConstrained,
                     this.page + 1,
                     General.PROFILE_CHUNK_SIZE
                 ).then(this.onProfilesLoaded);
@@ -180,14 +197,6 @@ export default class ChannelAddMembers extends PureComponent {
         this.setState({
             loading: false,
         });
-    };
-
-    onNavigatorEvent = (event) => {
-        if (event.type === 'NavBarButtonPress') {
-            if (event.id === this.addButton.id) {
-                this.handleAddMembersPress();
-            }
-        }
     };
 
     onSearch = (text) => {
@@ -258,8 +267,8 @@ export default class ChannelAddMembers extends PureComponent {
     };
 
     searchProfiles = (term) => {
-        const {actions, currentChannelId, currentTeamId} = this.props;
-        const options = {not_in_channel_id: currentChannelId, team_id: currentTeamId};
+        const {actions, currentChannelId, currentChannelGroupConstrained, currentTeamId} = this.props;
+        const options = {not_in_channel_id: currentChannelId, team_id: currentTeamId, group_constrained: currentChannelGroupConstrained};
         this.setState({loading: true});
 
         actions.searchProfiles(term.toLowerCase(), options).then(({data}) => {

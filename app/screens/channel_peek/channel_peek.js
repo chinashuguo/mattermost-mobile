@@ -3,7 +3,10 @@
 
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
-import {View} from 'react-native';
+import {Platform, View} from 'react-native';
+import {Navigation} from 'react-native-navigation';
+
+import {getLastPostIndex} from 'mattermost-redux/utils/post_list';
 
 import PostList from 'app/components/post_list';
 import {makeStyleSheetFromTheme} from 'app/utils/theme';
@@ -12,29 +15,30 @@ export default class ChannelPeek extends PureComponent {
     static propTypes = {
         actions: PropTypes.shape({
             loadPostsIfNecessaryWithRetry: PropTypes.func.isRequired,
-            markChannelAsRead: PropTypes.func.isRequired,
+            markChannelViewedAndRead: PropTypes.func.isRequired,
         }).isRequired,
         channelId: PropTypes.string.isRequired,
         currentUserId: PropTypes.string,
         lastViewedAt: PropTypes.number,
-        navigator: PropTypes.object,
-        postIds: PropTypes.array.isRequired,
+        postIds: PropTypes.array,
         theme: PropTypes.object.isRequired,
     };
 
     static defaultProps = {
-        postIds: [],
         postVisibility: 15,
     };
 
     constructor(props) {
         super(props);
 
-        this.props.navigator.setOnNavigatorEvent(this.onNavigatorEvent);
         props.actions.loadPostsIfNecessaryWithRetry(props.channelId);
         this.state = {
             visiblePostIds: this.getVisiblePostIds(props),
         };
+    }
+
+    componentDidMount() {
+        this.navigationEventListener = Navigation.events().bindComponent(this);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -51,17 +55,15 @@ export default class ChannelPeek extends PureComponent {
         });
     }
 
-    getVisiblePostIds = (props) => {
-        return props.postIds.slice(0, 15);
-    };
-
-    onNavigatorEvent = (event) => {
-        if (event.type === 'PreviewActionPress') {
-            if (event.id === 'action-mark-as-read') {
-                const {actions, channelId} = this.props;
-                actions.markChannelAsRead(channelId);
-            }
+    navigationButtonPressed({buttonId}) {
+        if (buttonId === 'action-mark-as-read') {
+            const {actions, channelId} = this.props;
+            actions.markChannelViewedAndRead(channelId);
         }
+    }
+
+    getVisiblePostIds = (props) => {
+        return props.postIds?.slice(0, 15) || [];
     };
 
     render() {
@@ -69,7 +71,6 @@ export default class ChannelPeek extends PureComponent {
             channelId,
             currentUserId,
             lastViewedAt,
-            navigator,
             theme,
         } = this.props;
 
@@ -80,12 +81,12 @@ export default class ChannelPeek extends PureComponent {
             <View style={style.container}>
                 <PostList
                     postIds={visiblePostIds}
+                    lastPostIndex={Platform.OS === 'android' ? getLastPostIndex(visiblePostIds) : -1}
                     renderReplies={true}
                     indicateNewMessages={true}
                     currentUserId={currentUserId}
                     lastViewedAt={lastViewedAt}
                     channelId={channelId}
-                    navigator={navigator}
                 />
             </View>
         );

@@ -8,6 +8,7 @@ import {
     InteractionManager,
     Text,
     View,
+    Platform,
 } from 'react-native';
 import {WebView} from 'react-native-webview';
 import CookieManager from 'react-native-cookies';
@@ -60,7 +61,6 @@ const oneLoginFormScalingJS = `
 class SSO extends PureComponent {
     static propTypes = {
         intl: intlShape.isRequired,
-        navigator: PropTypes.object,
         theme: PropTypes.object,
         serverUrl: PropTypes.string.isRequired,
         ssoType: PropTypes.string.isRequired,
@@ -68,8 +68,11 @@ class SSO extends PureComponent {
             scheduleExpiredNotification: PropTypes.func.isRequired,
             handleSuccessfulLogin: PropTypes.func.isRequired,
             setStoreFromLocalData: PropTypes.func.isRequired,
+            resetToChannel: PropTypes.func.isRequired,
         }).isRequired,
     };
+
+    useWebkit = true;
 
     constructor(props) {
         super(props);
@@ -95,6 +98,10 @@ class SSO extends PureComponent {
             this.completedUrl = '/signup/office365/complete';
             break;
         }
+
+        if (Platform.OS === 'ios') {
+            this.useWebkit = parseInt(Platform.Version, 10) >= 11;
+        }
     }
 
     componentDidMount() {
@@ -102,31 +109,17 @@ class SSO extends PureComponent {
     }
 
     clearPreviousCookies = () => {
-        CookieManager.clearAll(true).then(() => {
+        CookieManager.clearAll(this.useWebkit).then(() => {
             this.setState({renderWebView: true});
         });
     };
 
     goToChannel = () => {
-        const {navigator} = this.props;
         tracker.initialLoad = Date.now();
 
         this.scheduleSessionExpiredNotification();
 
-        navigator.resetTo({
-            screen: 'Channel',
-            title: '',
-            animated: false,
-            backButtonTitle: '',
-            navigatorStyle: {
-                animated: true,
-                animationType: 'fade',
-                navBarHidden: true,
-                statusBarHidden: false,
-                statusBarHideWithNavBar: false,
-                screenBackgroundColor: 'transparent',
-            },
-        });
+        this.props.actions.resetToChannel();
     };
 
     onMessage = (event) => {
@@ -168,7 +161,7 @@ class SSO extends PureComponent {
     onLoadEnd = (event) => {
         const url = event.nativeEvent.url;
         if (url.includes(this.completedUrl)) {
-            CookieManager.get(urlParse(url).origin, true).then((res) => {
+            CookieManager.get(this.props.serverUrl, this.useWebkit).then((res) => {
                 const token = res.MMAUTHTOKEN;
 
                 if (token) {
@@ -237,7 +230,7 @@ class SSO extends PureComponent {
                     injectedJavaScript={jsCode}
                     onLoadEnd={this.onLoadEnd}
                     onMessage={messagingEnabled ? this.onMessage : null}
-                    useWebKit={true}
+                    useWebKit={this.useWebkit}
                     useSharedProcessPool={true}
                     cacheEnabled={true}
                 />

@@ -2,28 +2,29 @@
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
-import {Text} from 'react-native';
 import PropTypes from 'prop-types';
 import Button from 'react-native-button';
 
 import {preventDoubleTap} from 'app/utils/tap';
 import {makeStyleSheetFromTheme} from 'app/utils/theme';
+import ActionButtonText from './action_button_text';
 
 export default class ActionButton extends PureComponent {
     static propTypes = {
         actions: PropTypes.shape({
-            doPostAction: PropTypes.func.isRequired,
+            doPostActionWithCookie: PropTypes.func.isRequired,
         }).isRequired,
         id: PropTypes.string.isRequired,
         name: PropTypes.string.isRequired,
         postId: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
+        cookie: PropTypes.string.isRequired,
     };
 
     handleActionPress = preventDoubleTap(() => {
-        const {actions, id, postId} = this.props;
-        actions.doPostAction(postId, id);
-    });
+        const {actions, id, postId, cookie} = this.props;
+        actions.doPostActionWithCookie(postId, id, cookie);
+    }, 4000);
 
     render() {
         const {name, theme} = this.props;
@@ -34,7 +35,10 @@ export default class ActionButton extends PureComponent {
                 containerStyle={style.button}
                 onPress={this.handleActionPress}
             >
-                <Text style={style.text}>{name}</Text>
+                <ActionButtonText
+                    message={name}
+                    style={style.text}
+                />
             </Button>
         );
     }
@@ -56,6 +60,7 @@ const getStyleSheet = makeStyleSheetFromTheme((theme) => {
             color: theme.buttonColor,
             fontSize: 12,
             fontWeight: '600',
+            lineHeight: 13,
         },
     };
 });

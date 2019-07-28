@@ -44,6 +44,7 @@ export default class SearchBarAndroid extends PureComponent {
         showArrow: PropTypes.bool,
         value: PropTypes.string,
         containerStyle: CustomPropTypes.Style,
+        leftComponent: PropTypes.element,
     };
 
     static defaultProps = {
@@ -63,25 +64,15 @@ export default class SearchBarAndroid extends PureComponent {
         onBlur: () => true,
         onSelectionChange: () => true,
         value: '',
+        leftComponent: null,
     };
 
     constructor(props) {
         super(props);
         this.state = {
-            value: props.value,
             isFocused: false,
             refocusInput: true,
         };
-    }
-
-    static getDerivedStateFromProps(nextProps, prevState) {
-        if (nextProps.value !== prevState.value) {
-            return {
-                value: nextProps.value,
-            };
-        }
-
-        return null;
     }
 
     cancel = () => {
@@ -107,7 +98,6 @@ export default class SearchBarAndroid extends PureComponent {
         InteractionManager.runAfterInteractions(() => {
             this.setState({
                 isFocused: false,
-                value: '',
             }, () => {
                 this.props.onCancelButtonPress();
             });
@@ -119,9 +109,7 @@ export default class SearchBarAndroid extends PureComponent {
     };
 
     onChangeText = (value) => {
-        this.setState({value}, () => {
-            this.props.onChangeText(value);
-        });
+        this.props.onChangeText(value);
     };
 
     onSelectionChange = (event) => {
@@ -188,6 +176,7 @@ export default class SearchBarAndroid extends PureComponent {
                     backgroundColor && {backgroundColor},
                 ]}
             >
+                {!isFocused && this.props.leftComponent}
                 <View
                     style={[
                         styles.searchBar,
@@ -219,7 +208,7 @@ export default class SearchBarAndroid extends PureComponent {
                         ref='input'
                         blurOnSubmit={blurOnSubmit}
                         refocusInput={this.state.refocusInput}
-                        value={this.state.value}
+                        value={this.props.value}
                         autoCapitalize={autoCapitalize}
                         autoCorrect={false}
                         returnKeyType={returnKeyType || 'search'}

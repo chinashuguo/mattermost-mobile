@@ -11,17 +11,8 @@ import Permalink from './permalink.js';
 jest.mock('react-intl');
 
 describe('Permalink', () => {
-    const navigator = {
-        dismissAllModals: jest.fn(),
-        dismissModal: jest.fn(),
-        push: jest.fn(),
-        resetTo: jest.fn(),
-        setOnNavigatorEvent: jest.fn(),
-    };
-
     const actions = {
-        getPostsAfter: jest.fn(),
-        getPostsBefore: jest.fn(),
+        getPostsAround: jest.fn(),
         getPostThread: jest.fn(),
         getChannel: jest.fn(),
         handleSelectChannel: jest.fn(),
@@ -31,6 +22,10 @@ describe('Permalink', () => {
         selectPost: jest.fn(),
         setChannelDisplayName: jest.fn(),
         setChannelLoading: jest.fn(),
+        goToScreen: jest.fn(),
+        dismissModal: jest.fn(),
+        dismissAllModals: jest.fn(),
+        resetToChannel: jest.fn(),
     };
 
     const baseProps = {
@@ -44,11 +39,11 @@ describe('Permalink', () => {
         focusedPostId: 'focused_post_id',
         isPermalink: true,
         myMembers: {},
-        navigator,
         onClose: jest.fn(),
         onPress: jest.fn(),
         postIds: ['post_id_1', 'focused_post_id', 'post_id_3'],
         theme: Preferences.THEMES.default,
+        componentId: 'component-id',
     };
 
     test('should match snapshot', () => {
@@ -83,7 +78,7 @@ describe('Permalink', () => {
         );
 
         wrapper.instance().handleClose = jest.fn();
-        wrapper.instance().onNavigatorEvent({id: 'backPress'});
+        wrapper.instance().navigationButtonPressed({buttonId: 'backPress'});
         expect(wrapper.instance().handleClose).toHaveBeenCalledTimes(1);
     });
 

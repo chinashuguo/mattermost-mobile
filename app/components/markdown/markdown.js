@@ -43,12 +43,12 @@ export default class Markdown extends PureComponent {
         baseTextStyle: CustomPropTypes.Style,
         blockStyles: PropTypes.object,
         channelMentions: PropTypes.object,
-        imageMetadata: PropTypes.object,
+        imagesMetadata: PropTypes.object,
         isEdited: PropTypes.bool,
         isReplyPost: PropTypes.bool,
         isSearchResult: PropTypes.bool,
         mentionKeys: PropTypes.array.isRequired,
-        navigator: PropTypes.object.isRequired,
+        minimumHashtagLength: PropTypes.number.isRequired,
         onChannelLinkPress: PropTypes.func,
         onHashtagPress: PropTypes.func,
         onPermalinkPress: PropTypes.func,
@@ -80,6 +80,7 @@ export default class Markdown extends PureComponent {
     createParser = () => {
         return new Parser({
             urlFilter: this.urlFilter,
+            minimumHashtagLength: this.props.minimumHashtagLength,
         });
     };
 
@@ -121,8 +122,8 @@ export default class Markdown extends PureComponent {
                 htmlInline: this.renderHtml,
 
                 table: this.renderTable,
-                table_row: MarkdownTableRow,
-                table_cell: MarkdownTableCell,
+                table_row: this.renderTableRow,
+                table_cell: this.renderTableCell,
 
                 mention_highlight: Renderer.forwardChildren,
 
@@ -174,7 +175,6 @@ export default class Markdown extends PureComponent {
                 <MarkdownTableImage
                     source={src}
                     textStyle={[this.computeTextStyle(this.props.baseTextStyle, context), this.props.textStyles.link]}
-                    navigator={this.props.navigator}
                 >
                     {reactChildren}
                 </MarkdownTableImage>
@@ -184,9 +184,8 @@ export default class Markdown extends PureComponent {
         return (
             <MarkdownImage
                 linkDestination={linkDestination}
-                imageMetadata={this.props.imageMetadata}
+                imagesMetadata={this.props.imagesMetadata}
                 isReplyPost={this.props.isReplyPost}
-                navigator={this.props.navigator}
                 source={src}
                 errorTextStyle={[this.computeTextStyle(this.props.baseTextStyle, context), this.props.textStyles.error]}
             >
@@ -207,7 +206,6 @@ export default class Markdown extends PureComponent {
                 isSearchResult={this.props.isSearchResult}
                 mentionName={mentionName}
                 onPostPress={this.props.onPostPress}
-                navigator={this.props.navigator}
             />
         );
     };
@@ -248,7 +246,6 @@ export default class Markdown extends PureComponent {
                 hashtag={hashtag}
                 linkStyle={this.props.textStyles.link}
                 onHashtagPress={this.props.onHashtagPress}
-                navigator={this.props.navigator}
             />
         );
     };
@@ -293,7 +290,6 @@ export default class Markdown extends PureComponent {
 
         return (
             <MarkdownCodeBlock
-                navigator={this.props.navigator}
                 content={content}
                 language={props.language}
                 textStyle={this.props.textStyles.codeBlock}
@@ -369,12 +365,19 @@ export default class Markdown extends PureComponent {
     renderTable = ({children, numColumns}) => {
         return (
             <MarkdownTable
-                navigator={this.props.navigator}
                 numColumns={numColumns}
             >
                 {children}
             </MarkdownTable>
         );
+    };
+
+    renderTableRow = (args) => {
+        return <MarkdownTableRow {...args}/>;
+    };
+
+    renderTableCell = (args) => {
+        return <MarkdownTableCell {...args}/>;
     };
 
     renderLink = ({children, href}) => {

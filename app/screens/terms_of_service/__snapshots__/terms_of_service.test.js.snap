@@ -3,7 +3,7 @@
 exports[`TermsOfService should enable/disable navigator buttons on setNavigatorButtons true/false 1`] = `
 <React.Fragment>
   <Connect(StatusBar) />
-  <ScrollView
+  <ScrollViewMock
     contentContainerStyle={
       Object {
         "paddingBottom": 50,
@@ -45,100 +45,6 @@ exports[`TermsOfService should enable/disable navigator buttons on setNavigatorB
       disableAtMentions={true}
       disableChannelLink={true}
       disableHashtags={true}
-      navigator={
-        Object {
-          "dismissAllModals": [MockFunction],
-          "dismissModal": [MockFunction],
-          "setButtons": [MockFunction] {
-            "calls": Array [
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": false,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": false,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-            ],
-          },
-          "setOnNavigatorEvent": [MockFunction] {
-            "calls": Array [
-              Array [
-                [Function],
-              ],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-            ],
-          },
-        }
-      }
       textStyles={
         Object {
           "code": Object {
@@ -225,14 +131,14 @@ exports[`TermsOfService should enable/disable navigator buttons on setNavigatorB
       }
       value="Terms Text"
     />
-  </ScrollView>
+  </ScrollViewMock>
 </React.Fragment>
 `;
 
 exports[`TermsOfService should enable/disable navigator buttons on setNavigatorButtons true/false 2`] = `
 <React.Fragment>
   <Connect(StatusBar) />
-  <ScrollView
+  <ScrollViewMock
     contentContainerStyle={
       Object {
         "paddingBottom": 50,
@@ -274,123 +180,6 @@ exports[`TermsOfService should enable/disable navigator buttons on setNavigatorB
       disableAtMentions={true}
       disableChannelLink={true}
       disableHashtags={true}
-      navigator={
-        Object {
-          "dismissAllModals": [MockFunction],
-          "dismissModal": [MockFunction],
-          "setButtons": [MockFunction] {
-            "calls": Array [
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": false,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": false,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-            ],
-          },
-          "setOnNavigatorEvent": [MockFunction] {
-            "calls": Array [
-              Array [
-                [Function],
-              ],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-            ],
-          },
-        }
-      }
       textStyles={
         Object {
           "code": Object {
@@ -477,7 +266,7 @@ exports[`TermsOfService should enable/disable navigator buttons on setNavigatorB
       }
       value="Terms Text"
     />
-  </ScrollView>
+  </ScrollViewMock>
 </React.Fragment>
 `;
 
@@ -556,7 +345,7 @@ exports[`TermsOfService should match snapshot for get terms 1`] = `
 exports[`TermsOfService should match snapshot on enableNavigatorLogout 1`] = `
 <React.Fragment>
   <Connect(StatusBar) />
-  <ScrollView
+  <ScrollViewMock
     contentContainerStyle={
       Object {
         "paddingBottom": 50,
@@ -598,100 +387,6 @@ exports[`TermsOfService should match snapshot on enableNavigatorLogout 1`] = `
       disableAtMentions={true}
       disableChannelLink={true}
       disableHashtags={true}
-      navigator={
-        Object {
-          "dismissAllModals": [MockFunction],
-          "dismissModal": [MockFunction],
-          "setButtons": [MockFunction] {
-            "calls": Array [
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "icon": Object {},
-                      "id": "reject-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-              Array [
-                Object {
-                  "leftButtons": Array [
-                    Object {
-                      "disabled": false,
-                      "icon": Object {},
-                      "id": "close-terms-of-service",
-                    },
-                  ],
-                  "rightButtons": Array [
-                    Object {
-                      "disabled": true,
-                      "id": "accept-terms-of-service",
-                      "showAsAction": "always",
-                      "title": undefined,
-                    },
-                  ],
-                },
-              ],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-            ],
-          },
-          "setOnNavigatorEvent": [MockFunction] {
-            "calls": Array [
-              Array [
-                [Function],
-              ],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": undefined,
-              },
-            ],
-          },
-        }
-      }
       textStyles={
         Object {
           "code": Object {
@@ -778,6 +473,6 @@ exports[`TermsOfService should match snapshot on enableNavigatorLogout 1`] = `
       }
       value="Terms Text"
     />
-  </ScrollView>
+  </ScrollViewMock>
 </React.Fragment>
 `;

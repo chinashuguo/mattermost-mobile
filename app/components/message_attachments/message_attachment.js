@@ -12,7 +12,7 @@ import AttachmentActions from './attachment_actions';
 import AttachmentAuthor from './attachment_author';
 import AttachmentFields from './attachment_fields';
 import AttachmentImage from './attachment_image';
-import AttachmentPreText from './attachement_pretext';
+import AttachmentPreText from './attachment_pretext';
 import AttachmentText from './attachment_text';
 import AttachmentThumbnail from './attachment_thumbnail';
 import AttachmentTitle from './attachment_title';
@@ -31,7 +31,6 @@ export default class MessageAttachment extends PureComponent {
         deviceHeight: PropTypes.number.isRequired,
         deviceWidth: PropTypes.number.isRequired,
         metadata: PropTypes.object,
-        navigator: PropTypes.object.isRequired,
         postId: PropTypes.string.isRequired,
         onPermalinkPress: PropTypes.func,
         theme: PropTypes.object,
@@ -46,7 +45,6 @@ export default class MessageAttachment extends PureComponent {
             deviceHeight,
             deviceWidth,
             metadata,
-            navigator,
             onPermalinkPress,
             postId,
             textStyles,
@@ -70,7 +68,6 @@ export default class MessageAttachment extends PureComponent {
                     baseTextStyle={baseTextStyle}
                     blockStyles={blockStyles}
                     metadata={metadata}
-                    navigator={navigator}
                     onPermalinkPress={onPermalinkPress}
                     textStyles={textStyles}
                     value={attachment.pretext}
@@ -86,7 +83,6 @@ export default class MessageAttachment extends PureComponent {
                         link={attachment.title_link}
                         theme={theme}
                         value={attachment.title}
-                        navigator={navigator}
                     />
                     <AttachmentThumbnail url={attachment.thumb_url}/>
                     <AttachmentText
@@ -95,7 +91,6 @@ export default class MessageAttachment extends PureComponent {
                         deviceHeight={deviceHeight}
                         hasThumbnail={Boolean(attachment.thumb_url)}
                         metadata={metadata}
-                        navigator={navigator}
                         onPermalinkPress={onPermalinkPress}
                         textStyles={textStyles}
                         value={attachment.text}
@@ -105,22 +100,19 @@ export default class MessageAttachment extends PureComponent {
                         blockStyles={blockStyles}
                         fields={attachment.fields}
                         metadata={metadata}
-                        navigator={navigator}
                         onPermalinkPress={onPermalinkPress}
                         textStyles={textStyles}
                         theme={theme}
                     />
                     <AttachmentActions
                         actions={attachment.actions}
-                        navigator={navigator}
                         postId={postId}
                     />
                     <AttachmentImage
                         deviceHeight={deviceHeight}
                         deviceWidth={deviceWidth}
                         imageUrl={attachment.image_url}
-                        metadata={metadata}
-                        navigator={navigator}
+                        imageMetadata={metadata?.images?.[attachment.image_url]}
                         theme={theme}
                     />
                 </View>

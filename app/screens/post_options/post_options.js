@@ -7,6 +7,8 @@ import {Alert, Clipboard, StyleSheet, View} from 'react-native';
 import {intlShape} from 'react-intl';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 
+import EventEmitter from 'mattermost-redux/utils/event_emitter';
+
 import SlideUpPanel from 'app/components/slide_up_panel';
 import {BOTTOM_MARGIN} from 'app/components/slide_up_panel/slide_up_panel';
 
@@ -23,23 +25,23 @@ export default class PostOptions extends PureComponent {
             removePost: PropTypes.func.isRequired,
             unflagPost: PropTypes.func.isRequired,
             unpinPost: PropTypes.func.isRequired,
+            dismissModal: PropTypes.func.isRequired,
+            showModal: PropTypes.func.isRequired,
         }).isRequired,
-        additionalOption: PropTypes.object,
         canAddReaction: PropTypes.bool,
+        canReply: PropTypes.bool,
+        canCopyPermalink: PropTypes.bool,
+        canCopyText: PropTypes.bool,
         canDelete: PropTypes.bool,
+        canFlag: PropTypes.bool,
         canPin: PropTypes.bool,
         canEdit: PropTypes.bool,
         canEditUntil: PropTypes.number.isRequired,
-        channelIsReadOnly: PropTypes.bool,
         currentTeamUrl: PropTypes.string.isRequired,
         deviceHeight: PropTypes.number.isRequired,
-        hasBeenDeleted: PropTypes.bool,
         isFlagged: PropTypes.bool,
         isMyPost: PropTypes.bool,
-        managedConfig: PropTypes.object.isRequired,
-        navigator: PropTypes.object.isRequired,
         post: PropTypes.object.isRequired,
-        showAddReaction: PropTypes.bool,
         theme: PropTypes.object.isRequired,
     };
 
@@ -48,14 +50,12 @@ export default class PostOptions extends PureComponent {
     };
 
     close = () => {
-        this.props.navigator.dismissModal({
-            animationType: 'none',
-        });
+        this.props.actions.dismissModal();
     };
 
     closeWithAnimation = () => {
         if (this.slideUpPanel) {
-            this.slideUpPanel.getWrappedInstance().closeWithAnimation();
+            this.slideUpPanel.closeWithAnimation();
         } else {
             this.close();
         }
@@ -63,9 +63,9 @@ export default class PostOptions extends PureComponent {
 
     getAddReactionOption = () => {
         const {formatMessage} = this.context.intl;
-        const {canAddReaction, channelIsReadOnly, showAddReaction} = this.props;
+        const {canAddReaction} = this.props;
 
-        if (showAddReaction && canAddReaction && !channelIsReadOnly) {
+        if (canAddReaction) {
             return (
                 <PostOption
                     key='reaction'
@@ -79,24 +79,47 @@ export default class PostOptions extends PureComponent {
         return null;
     };
 
+    getReplyOption = () => {
+        const {formatMessage} = this.context.intl;
+        const {canReply} = this.props;
+
+        if (canReply) {
+            return (
+                <PostOption
+                    key='reply'
+                    icon='reply'
+                    text={formatMessage({id: 'mobile.post_info.reply', defaultMessage: 'Reply'})}
+                    onPress={this.handleReply}
+                />
+            );
+        }
+
+        return null;
+    }
+
     getCopyPermalink = () => {
         const {formatMessage} = this.context.intl;
+        const {canCopyPermalink} = this.props;
 
-        return (
-            <PostOption
-                key='permalink'
-                icon='link'
-                text={formatMessage({id: 'get_post_link_modal.title', defaultMessage: 'Copy Permalink'})}
-                onPress={this.handleCopyPermalink}
-            />
-        );
+        if (canCopyPermalink) {
+            return (
+                <PostOption
+                    key='permalink'
+                    icon='link'
+                    text={formatMessage({id: 'get_post_link_modal.title', defaultMessage: 'Copy Permalink'})}
+                    onPress={this.handleCopyPermalink}
+                />
+            );
+        }
+
+        return null;
     };
 
     getCopyText = () => {
         const {formatMessage} = this.context.intl;
-        const {managedConfig, post} = this.props;
+        const {canCopyText} = this.props;
 
-        if (managedConfig.copyAndPasteProtection !== 'true' && post.message) {
+        if (canCopyText) {
             return (
                 <PostOption
                     key='copy'
@@ -112,9 +135,9 @@ export default class PostOptions extends PureComponent {
 
     getDeleteOption = () => {
         const {formatMessage} = this.context.intl;
-        const {canDelete, hasBeenDeleted} = this.props;
+        const {canDelete} = this.props;
 
-        if (canDelete && !hasBeenDeleted) {
+        if (canDelete) {
             return (
                 <PostOption
                     destructive={true}
@@ -149,9 +172,9 @@ export default class PostOptions extends PureComponent {
 
     getFlagOption = () => {
         const {formatMessage} = this.context.intl;
-        const {channelIsReadOnly, isFlagged} = this.props;
+        const {canFlag, isFlagged} = this.props;
 
-        if (channelIsReadOnly) {
+        if (!canFlag) {
             return null;
         }
 
@@ -178,9 +201,9 @@ export default class PostOptions extends PureComponent {
 
     getPinOption = () => {
         const {formatMessage} = this.context.intl;
-        const {channelIsReadOnly, post} = this.props;
+        const {canPin, post} = this.props;
 
-        if (channelIsReadOnly) {
+        if (!canPin) {
             return null;
         }
 
@@ -208,39 +231,29 @@ export default class PostOptions extends PureComponent {
     getMyPostOptions = () => {
         const actions = [
             this.getEditOption(),
+            this.getReplyOption(),
             this.getFlagOption(),
+            this.getPinOption(),
             this.getAddReactionOption(),
             this.getCopyPermalink(),
             this.getCopyText(),
+            this.getDeleteOption(),
         ];
-
-        const {canDelete, canPin} = this.props;
-        if (canPin) {
-            actions.splice(2, 0, this.getPinOption());
-        }
-        if (canDelete) {
-            actions.push(this.getDeleteOption());
-        }
 
         return actions.filter((a) => a !== null);
     };
 
     getOthersPostOptions = () => {
         const actions = [
+            this.getReplyOption(),
             this.getFlagOption(),
             this.getAddReactionOption(),
+            this.getPinOption(),
             this.getCopyPermalink(),
             this.getCopyText(),
             this.getEditOption(),
+            this.getDeleteOption(),
         ];
-
-        const {canDelete, canPin} = this.props;
-        if (canPin) {
-            actions.splice(2, 0, this.getPinOption());
-        }
-        if (canDelete) {
-            actions.push(this.getDeleteOption());
-        }
 
         return actions.filter((a) => a !== null);
     };
@@ -248,37 +261,34 @@ export default class PostOptions extends PureComponent {
     getPostOptions = () => {
         const {isMyPost} = this.props;
 
-        if (isMyPost) {
-            return this.getMyPostOptions();
-        }
-
-        return this.getOthersPostOptions();
+        return isMyPost ? this.getMyPostOptions() : this.getOthersPostOptions();
     };
 
     handleAddReaction = () => {
+        const {actions, theme} = this.props;
         const {formatMessage} = this.context.intl;
-        const {navigator, theme} = this.props;
 
         this.close();
-        requestAnimationFrame(() => {
+        setTimeout(() => {
             MaterialIcon.getImageSource('close', 20, theme.sidebarHeaderTextColor).then((source) => {
-                navigator.showModal({
-                    screen: 'AddReaction',
-                    title: formatMessage({id: 'mobile.post_info.add_reaction', defaultMessage: 'Add Reaction'}),
-                    animated: true,
-                    navigatorStyle: {
-                        navBarTextColor: theme.sidebarHeaderTextColor,
-                        navBarBackgroundColor: theme.sidebarHeaderBg,
-                        navBarButtonColor: theme.sidebarHeaderTextColor,
-                        screenBackgroundColor: theme.centerChannelBg,
-                    },
-                    passProps: {
-                        closeButton: source,
-                        onEmojiPress: this.handleAddReactionToPost,
-                    },
-                });
+                const screen = 'AddReaction';
+                const title = formatMessage({id: 'mobile.post_info.add_reaction', defaultMessage: 'Add Reaction'});
+                const passProps = {
+                    closeButton: source,
+                    onEmojiPress: this.handleAddReactionToPost,
+                };
+
+                actions.showModal(screen, title, passProps);
             });
-        });
+        }, 300);
+    };
+
+    handleReply = () => {
+        const {post} = this.props;
+        this.closeWithAnimation();
+        setTimeout(() => {
+            EventEmitter.emit('goToThread', post);
+        }, 250);
     };
 
     handleAddReactionToPost = (emoji) => {
@@ -322,7 +332,7 @@ export default class PostOptions extends PureComponent {
 
     handlePostDelete = () => {
         const {formatMessage} = this.context.intl;
-        const {actions, isMyPost, post} = this.props;
+        const {actions, post} = this.props;
 
         Alert.alert(
             formatMessage({id: 'mobile.post.delete_title', defaultMessage: 'Delete Post'}),
@@ -338,9 +348,7 @@ export default class PostOptions extends PureComponent {
                 style: 'destructive',
                 onPress: () => {
                     actions.deletePost(post);
-                    if (isMyPost) {
-                        actions.removePost(post);
-                    }
+                    actions.removePost(post);
                     this.closeWithAnimation();
                 },
             }]
@@ -348,29 +356,22 @@ export default class PostOptions extends PureComponent {
     };
 
     handlePostEdit = () => {
+        const {actions, theme, post} = this.props;
         const {intl} = this.context;
-        const {navigator, post, theme} = this.props;
 
         this.close();
-        requestAnimationFrame(() => {
+        setTimeout(() => {
             MaterialIcon.getImageSource('close', 20, theme.sidebarHeaderTextColor).then((source) => {
-                navigator.showModal({
-                    screen: 'EditPost',
-                    title: intl.formatMessage({id: 'mobile.edit_post.title', defaultMessage: 'Editing Message'}),
-                    animated: true,
-                    navigatorStyle: {
-                        navBarTextColor: theme.sidebarHeaderTextColor,
-                        navBarBackgroundColor: theme.sidebarHeaderBg,
-                        navBarButtonColor: theme.sidebarHeaderTextColor,
-                        screenBackgroundColor: theme.centerChannelBg,
-                    },
-                    passProps: {
-                        post,
-                        closeButton: source,
-                    },
-                });
+                const screen = 'EditPost';
+                const title = intl.formatMessage({id: 'mobile.edit_post.title', defaultMessage: 'Editing Message'});
+                const passProps = {
+                    post,
+                    closeButton: source,
+                };
+
+                actions.showModal(screen, title, passProps);
             });
-        });
+        }, 300);
     };
 
     handleUnflagPost = () => {
@@ -398,6 +399,10 @@ export default class PostOptions extends PureComponent {
     render() {
         const {deviceHeight} = this.props;
         const options = this.getPostOptions();
+        if (!options || !options.length) {
+            return null;
+        }
+
         const marginFromTop = deviceHeight - BOTTOM_MARGIN - ((options.length + 1) * OPTION_HEIGHT);
         const initialPosition = getInitialPosition(deviceHeight, marginFromTop);
 
@@ -409,6 +414,7 @@ export default class PostOptions extends PureComponent {
                     marginFromTop={marginFromTop > 0 ? marginFromTop : 0}
                     onRequestClose={this.close}
                     initialPosition={initialPosition}
+                    key={marginFromTop}
                 >
                     {options}
                 </SlideUpPanel>

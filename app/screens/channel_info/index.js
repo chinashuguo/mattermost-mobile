@@ -29,7 +29,14 @@ import {getCurrentUserId, getUser, getStatusForUserId, getCurrentUserRoles} from
 import {areChannelMentionsIgnored, getUserIdFromChannelName, isChannelMuted, showDeleteOption, showManagementOptions} from 'mattermost-redux/utils/channel_utils';
 import {isAdmin as checkIsAdmin, isChannelAdmin as checkIsChannelAdmin, isSystemAdmin as checkIsSystemAdmin} from 'mattermost-redux/utils/user_utils';
 import {getConfig, getLicense} from 'mattermost-redux/selectors/entities/general';
+import {isGuest} from 'app/utils/users';
 
+import {
+    popTopScreen,
+    goToScreen,
+    dismissModal,
+    showModalOverCurrentContext,
+} from 'app/actions/navigation';
 import {
     closeDMChannel,
     closeGMChannel,
@@ -50,19 +57,32 @@ function mapStateToProps(state) {
     const currentChannelCreatorName = currentChannelCreator && currentChannelCreator.username;
     const currentChannelStats = getCurrentChannelStats(state);
     const currentChannelMemberCount = currentChannelStats && currentChannelStats.member_count;
+    let currentChannelGuestCount = (currentChannelStats && currentChannelStats.guest_count) || 0;
     const currentChannelMember = getMyCurrentChannelMembership(state);
     const currentUserId = getCurrentUserId(state);
     const favoriteChannels = getSortedFavoriteChannelIds(state);
     const isCurrent = currentChannel.id === state.entities.channels.currentChannelId;
     const isFavorite = favoriteChannels && favoriteChannels.indexOf(currentChannel.id) > -1;
     const roles = getCurrentUserRoles(state);
-    const canManageUsers = currentChannel.hasOwnProperty('id') ? canManageChannelMembers(state) : false;
+    let canManageUsers = currentChannel.hasOwnProperty('id') ? canManageChannelMembers(state) : false;
+    if (currentChannel.group_constrained) {
+        canManageUsers = false;
+    }
     const currentUser = getUser(state, currentUserId);
+    const currentUserIsGuest = isGuest(currentUser);
 
     let status;
+    let isBot = false;
     if (currentChannel.type === General.DM_CHANNEL) {
         const teammateId = getUserIdFromChannelName(currentUserId, currentChannel.name);
+        const teammate = getUser(state, teammateId);
         status = getStatusForUserId(state, teammateId);
+        if (teammate && teammate.is_bot) {
+            isBot = true;
+        }
+        if (isGuest(teammate)) {
+            currentChannelGuestCount = 1;
+        }
     }
 
     const isAdmin = checkIsAdmin(roles);
@@ -80,14 +100,17 @@ function mapStateToProps(state) {
         currentChannel,
         currentChannelCreatorName,
         currentChannelMemberCount,
+        currentChannelGuestCount,
         currentUserId,
+        currentUserIsGuest,
         isChannelMuted: isChannelMuted(currentChannelMember),
-        ignoreChannelMentions: areChannelMentionsIgnored(currentChannelMember.notify_props, currentUser.notify_props),
+        ignoreChannelMentions: areChannelMentionsIgnored(currentChannelMember && currentChannelMember.notify_props, currentUser.notify_props),
         isCurrent,
         isFavorite,
         status,
         theme: getTheme(state),
         canManageUsers,
+        isBot,
     };
 }
 
@@ -110,6 +133,10 @@ function mapDispatchToProps(dispatch) {
             selectPenultimateChannel,
             setChannelDisplayName,
             handleSelectChannel,
+            popTopScreen,
+            goToScreen,
+            dismissModal,
+            showModalOverCurrentContext,
         }, dispatch),
     };
 }

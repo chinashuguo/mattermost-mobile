@@ -4,7 +4,10 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {
+    Dimensions,
     InteractionManager,
+    Keyboard,
+    Platform,
     SectionList,
     Text,
     TouchableHighlight,
@@ -17,8 +20,9 @@ import {General} from 'mattermost-redux/constants';
 import {debounce} from 'mattermost-redux/actions/helpers';
 
 import ChannelItem from 'app/components/sidebars/main/channels_list/channel_item';
-import {ListTypes} from 'app/constants';
+import {DeviceTypes, ListTypes} from 'app/constants';
 import {SidebarSectionTypes} from 'app/constants/view';
+
 import {t} from 'app/utils/i18n';
 import {preventDoubleTap} from 'app/utils/tap';
 import {changeOpacity} from 'app/utils/theme';
@@ -32,14 +36,18 @@ let UnreadIndicator = null;
 
 export default class List extends PureComponent {
     static propTypes = {
+        canJoinPublicChannels: PropTypes.bool.isRequired,
         canCreatePrivateChannels: PropTypes.bool.isRequired,
         favoriteChannelIds: PropTypes.array.isRequired,
-        navigator: PropTypes.object,
         onSelectChannel: PropTypes.func.isRequired,
         unreadChannelIds: PropTypes.array.isRequired,
         styles: PropTypes.object.isRequired,
         theme: PropTypes.object.isRequired,
         orderedChannelIds: PropTypes.array.isRequired,
+        previewChannel: PropTypes.func,
+        actions: PropTypes.shape({
+            showModal: PropTypes.func.isRequired,
+        }).isRequired,
     };
 
     static contextTypes = {
@@ -53,6 +61,11 @@ export default class List extends PureComponent {
             sections: this.buildSections(props),
             showIndicator: false,
             width: 0,
+        };
+
+        this.keyboardDismissProp = {
+            keyboardDismissMode: Platform.OS === 'ios' ? 'interactive' : 'none',
+            onScrollBeginDrag: this.scrollBeginDrag,
         };
 
         MaterialIcon.getImageSource('close', 20, this.props.theme.sidebarHeaderTextColor).then((source) => {
@@ -84,7 +97,7 @@ export default class List extends PureComponent {
     }
 
     getSectionConfigByType = (props, sectionType) => {
-        const {canCreatePrivateChannels} = props;
+        const {canCreatePrivateChannels, canJoinPublicChannels} = props;
 
         switch (sectionType) {
         case SidebarSectionTypes.UNREADS:
@@ -99,7 +112,7 @@ export default class List extends PureComponent {
             };
         case SidebarSectionTypes.PUBLIC:
             return {
-                action: this.goToMoreChannels,
+                action: canJoinPublicChannels ? this.goToMoreChannels : null,
                 id: t('sidebar.channels'),
                 defaultMessage: 'PUBLIC CHANNELS',
             };
@@ -134,7 +147,7 @@ export default class List extends PureComponent {
                 defaultMessage: 'CHANNELS',
             };
         }
-    }
+    };
 
     buildSections = (props) => {
         const {
@@ -152,7 +165,10 @@ export default class List extends PureComponent {
     };
 
     showCreateChannelOptions = () => {
-        const {canCreatePrivateChannels, navigator} = this.props;
+        const {
+            canCreatePrivateChannels,
+            actions,
+        } = this.props;
 
         const items = [];
         const moreChannels = {
@@ -190,123 +206,96 @@ export default class List extends PureComponent {
         }
         items.push(newConversation);
 
-        navigator.showModal({
-            screen: 'OptionsModal',
-            title: '',
-            animationType: 'none',
-            passProps: {
-                items,
-                onItemPress: () => navigator.dismissModal({
-                    animationType: 'none',
-                }),
+        const screen = 'OptionsModal';
+        const title = '';
+        const passProps = {
+            items,
+        };
+        const options = {
+            modalPresentationStyle: 'overCurrentContext',
+            layout: {
+                backgroundColor: 'transparent',
             },
-            navigatorStyle: {
-                navBarHidden: true,
-                statusBarHidden: false,
-                statusBarHideWithNavBar: false,
-                screenBackgroundColor: 'transparent',
-                modalPresentationStyle: 'overCurrentContext',
+            topBar: {
+                visible: false,
+                height: 0,
             },
-        });
-    }
+            animations: {
+                showModal: {
+                    enable: false,
+                },
+                dismissModal: {
+                    enable: false,
+                },
+            },
+        };
+
+        actions.showModal(screen, title, passProps, options);
+    };
 
     goToCreatePublicChannel = preventDoubleTap(() => {
-        const {navigator, theme} = this.props;
+        const {actions} = this.props;
         const {intl} = this.context;
+        const screen = 'CreateChannel';
+        const title = intl.formatMessage({id: 'mobile.create_channel.public', defaultMessage: 'New Public Channel'});
+        const passProps = {
+            channelType: General.OPEN_CHANNEL,
+            closeButton: this.closeButton,
+        };
 
-        navigator.showModal({
-            screen: 'CreateChannel',
-            animationType: 'slide-up',
-            title: intl.formatMessage({id: 'mobile.create_channel.public', defaultMessage: 'New Public Channel'}),
-            backButtonTitle: '',
-            animated: true,
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                channelType: General.OPEN_CHANNEL,
-                closeButton: this.closeButton,
-            },
-        });
+        actions.showModal(screen, title, passProps);
     });
 
     goToCreatePrivateChannel = preventDoubleTap(() => {
-        const {navigator, theme} = this.props;
+        const {actions} = this.props;
         const {intl} = this.context;
+        const screen = 'CreateChannel';
+        const title = intl.formatMessage({id: 'mobile.create_channel.private', defaultMessage: 'New Private Channel'});
+        const passProps = {
+            channelType: General.PRIVATE_CHANNEL,
+            closeButton: this.closeButton,
+        };
 
-        navigator.showModal({
-            screen: 'CreateChannel',
-            animationType: 'slide-up',
-            title: intl.formatMessage({id: 'mobile.create_channel.private', defaultMessage: 'New Private Channel'}),
-            backButtonTitle: '',
-            animated: true,
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                channelType: General.PRIVATE_CHANNEL,
-                closeButton: this.closeButton,
-            },
-        });
+        actions.showModal(screen, title, passProps);
     });
 
     goToDirectMessages = preventDoubleTap(() => {
-        const {navigator, theme} = this.props;
+        const {actions} = this.props;
         const {intl} = this.context;
-
-        navigator.showModal({
-            screen: 'MoreDirectMessages',
-            title: intl.formatMessage({id: 'mobile.more_dms.title', defaultMessage: 'New Conversation'}),
-            animationType: 'slide-up',
-            animated: true,
-            backButtonTitle: '',
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            navigatorButtons: {
+        const screen = 'MoreDirectMessages';
+        const title = intl.formatMessage({id: 'mobile.more_dms.title', defaultMessage: 'New Conversation'});
+        const passProps = {};
+        const options = {
+            topBar: {
                 leftButtons: [{
                     id: 'close-dms',
                     icon: this.closeButton,
                 }],
             },
-        });
+        };
+
+        actions.showModal(screen, title, passProps, options);
     });
 
     goToMoreChannels = preventDoubleTap(() => {
-        const {navigator, theme} = this.props;
+        const {actions} = this.props;
         const {intl} = this.context;
+        const screen = 'MoreChannels';
+        const title = intl.formatMessage({id: 'more_channels.title', defaultMessage: 'More Channels'});
+        const passProps = {
+            closeButton: this.closeButton,
+        };
 
-        navigator.showModal({
-            screen: 'MoreChannels',
-            animationType: 'slide-up',
-            title: intl.formatMessage({id: 'more_channels.title', defaultMessage: 'More Channels'}),
-            backButtonTitle: '',
-            animated: true,
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                closeButton: this.closeButton,
-            },
-        });
+        actions.showModal(screen, title, passProps);
     });
 
     keyExtractor = (item) => item.id || item;
 
     onSelectChannel = (channel, currentChannelId) => {
         const {onSelectChannel} = this.props;
+        if (DeviceTypes.IS_TABLET) {
+            Keyboard.dismiss();
+        }
         onSelectChannel(channel, currentChannelId);
     };
 
@@ -339,15 +328,15 @@ export default class List extends PureComponent {
     };
 
     renderItem = ({item}) => {
-        const {favoriteChannelIds, unreadChannelIds} = this.props;
+        const {favoriteChannelIds, unreadChannelIds, previewChannel} = this.props;
 
         return (
             <ChannelItem
                 channelId={item}
                 isUnread={unreadChannelIds.includes(item)}
                 isFavorite={favoriteChannelIds.includes(item)}
-                navigator={this.props.navigator}
                 onSelectChannel={this.onSelectChannel}
+                previewChannel={previewChannel}
             />
         );
     };
@@ -408,9 +397,31 @@ export default class List extends PureComponent {
         });
     };
 
+    scrollBeginDrag = () => {
+        if (DeviceTypes.IS_TABLET) {
+            Keyboard.dismiss();
+        }
+    };
+
+    listContentPadding = () => {
+        if (DeviceTypes.IS_TABLET) {
+            return 64;
+        }
+
+        const {width, height} = Dimensions.get('window');
+        const landscape = width > height;
+        if (DeviceTypes.IS_IPHONE_X) {
+            return landscape ? 54 : 44;
+        }
+
+        return 64;
+    };
+
     render() {
         const {styles, theme} = this.props;
         const {sections, width, showIndicator} = this.state;
+
+        const paddingBottom = this.listContentPadding();
 
         return (
             <View
@@ -420,14 +431,16 @@ export default class List extends PureComponent {
                 <SectionList
                     ref='list'
                     sections={sections}
+                    contentContainerStyle={{paddingBottom}}
                     renderItem={this.renderItem}
                     renderSectionHeader={this.renderSectionHeader}
                     keyExtractor={this.keyExtractor}
                     onViewableItemsChanged={this.updateUnreadIndicators}
-                    keyboardDismissMode='on-drag'
                     maxToRenderPerBatch={10}
                     stickySectionHeadersEnabled={false}
                     viewabilityConfig={VIEWABILITY_CONFIG}
+                    keyboardShouldPersistTaps={'always'}
+                    {...this.keyboardDismissProp}
                 />
                 {showIndicator &&
                 <UnreadIndicator

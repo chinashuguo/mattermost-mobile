@@ -4,7 +4,6 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {
-    Platform,
     Text,
     TouchableOpacity,
     View,
@@ -14,43 +13,38 @@ import {General} from 'mattermost-redux/constants';
 import {injectIntl, intlShape} from 'react-intl';
 
 import ProfilePicture from 'app/components/profile_picture';
+import BotTag from 'app/components/bot_tag';
+import GuestTag from 'app/components/guest_tag';
 import {preventDoubleTap} from 'app/utils/tap';
 import {changeOpacity, makeStyleSheetFromTheme} from 'app/utils/theme';
 import {t} from 'app/utils/i18n';
+import {isGuest} from 'app/utils/users';
 
 class ChannelIntro extends PureComponent {
     static propTypes = {
+        actions: PropTypes.shape({
+            goToScreen: PropTypes.func.isRequired,
+        }).isRequired,
         creator: PropTypes.object,
         currentChannel: PropTypes.object.isRequired,
         currentChannelMembers: PropTypes.array.isRequired,
         intl: intlShape.isRequired,
-        navigator: PropTypes.object.isRequired,
         theme: PropTypes.object.isRequired,
     };
 
+    static defaultProps = {
+        currentChannelMembers: [],
+    };
+
     goToUserProfile = (userId) => {
-        const {intl, navigator, theme} = this.props;
-        const options = {
-            screen: 'UserProfile',
-            title: intl.formatMessage({id: 'mobile.routes.user_profile', defaultMessage: 'Profile'}),
-            animated: true,
-            backButtonTitle: '',
-            passProps: {
-                userId,
-            },
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
+        const {actions, intl} = this.props;
+        const screen = 'UserProfile';
+        const title = intl.formatMessage({id: 'mobile.routes.user_profile', defaultMessage: 'Profile'});
+        const passProps = {
+            userId,
         };
 
-        if (Platform.OS === 'ios') {
-            navigator.push(options);
-        } else {
-            navigator.showModal(options);
-        }
+        actions.goToScreen(screen, title, passProps);
     };
 
     getDisplayName = (member) => {
@@ -91,16 +85,31 @@ class ChannelIntro extends PureComponent {
         const {currentChannelMembers, theme} = this.props;
         const style = getStyleSheet(theme);
 
-        return currentChannelMembers.map((member, index) => (
-            <TouchableOpacity
-                key={member.id}
-                onPress={preventDoubleTap(() => this.goToUserProfile(member.id))}
-            >
-                <Text style={style.displayName}>
-                    {index === currentChannelMembers.length - 1 ? this.getDisplayName(member) : `${this.getDisplayName(member)}, `}
-                </Text>
-            </TouchableOpacity>
-        ));
+        return currentChannelMembers.map((member, index) => {
+            return (
+                <TouchableOpacity
+                    key={member.id}
+                    onPress={preventDoubleTap(() => this.goToUserProfile(member.id))}
+                >
+                    <View style={style.indicatorContainer}>
+                        <Text style={style.displayName}>
+                            {this.getDisplayName(member)}
+                        </Text>
+                        <BotTag
+                            show={Boolean(member.is_bot)}
+                            theme={theme}
+                        />
+                        <GuestTag
+                            show={isGuest(member)}
+                            theme={theme}
+                        />
+                        <Text style={style.displayName}>
+                            {index === currentChannelMembers.length - 1 ? '' : ', '}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+            );
+        });
     };
 
     buildDMContent = () => {
@@ -153,29 +162,21 @@ class ChannelIntro extends PureComponent {
         if (creator) {
             const creatorName = this.getDisplayName(creator);
             mainMessageIntl = {
-                id: 'intro_messages.creator',
-                defaultMessage: 'This is the start of the {name} {type}, created by {creator} on {date}.',
+                id: t('intro_messages.creator'),
+                defaultMessage: 'This is the start of the {name} channel, created by {creator} on {date}.',
                 values: {
                     name: currentChannel.display_name,
                     creator: creatorName,
                     date,
-                    type: intl.formatMessage({
-                        id: 'intro_messages.channel',
-                        defaultMessage: 'channel',
-                    }),
                 },
             };
         } else {
             mainMessageIntl = {
                 id: t('intro_messages.noCreator'),
-                defaultMessage: 'This is the start of the {name} {type}, created on {date}.',
+                defaultMessage: 'This is the start of the {name} channel, created on {date}.',
                 values: {
                     name: currentChannel.display_name,
                     date,
-                    type: intl.formatMessage({
-                        id: 'intro_messages.channel',
-                        defaultMessage: 'channel',
-                    }),
                 },
             };
         }
@@ -219,16 +220,12 @@ class ChannelIntro extends PureComponent {
         });
 
         const mainMessage = intl.formatMessage({
-            id: 'intro_messages.creator',
-            defaultMessage: 'This is the start of the {name} {type}, created by {creator} on {date}.',
+            id: 'intro_messages.creatorPrivate',
+            defaultMessage: 'This is the start of the {name} private channel, created by {creator} on {date}.',
         }, {
             name: currentChannel.display_name,
             creator: creatorName,
             date,
-            type: intl.formatMessage({
-                id: 'intro_messages.group',
-                defaultMessage: 'private channel',
-            }),
         });
 
         const onlyInvitedMessage = intl.formatMessage({
@@ -381,6 +378,9 @@ const getStyleSheet = makeStyleSheetFromTheme((theme) => {
             flexDirection: 'row',
             flexWrap: 'wrap',
             justifyContent: 'flex-start',
+        },
+        indicatorContainer: {
+            flexDirection: 'row',
         },
     };
 });

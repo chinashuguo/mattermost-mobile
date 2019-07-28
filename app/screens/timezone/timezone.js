@@ -21,7 +21,6 @@ import {getDeviceTimezone} from 'app/utils/timezone';
 
 export default class Timezone extends PureComponent {
     static propTypes = {
-        navigator: PropTypes.object.isRequired,
         theme: PropTypes.object.isRequired,
         timezones: PropTypes.array.isRequired,
         user: PropTypes.object.isRequired,
@@ -34,6 +33,10 @@ export default class Timezone extends PureComponent {
             getSupportedTimezones: PropTypes.func.isRequired,
             updateUser: PropTypes.func.isRequired,
         }).isRequired,
+    };
+
+    static defaultProps = {
+        timezones: [],
     };
 
     static contextTypes = {
@@ -71,7 +74,7 @@ export default class Timezone extends PureComponent {
             return;
         }
 
-        if (manualTimezone.length > 0) {
+        if (manualTimezone?.length > 0) {
             // Preserve state change in server if manualTimezone exists
             this.submitUser({
                 useAutomaticTimezone,
@@ -112,29 +115,20 @@ export default class Timezone extends PureComponent {
 
     goToSelectTimezone = () => {
         const {
+            actions,
             userTimezone: {manualTimezone},
-            navigator,
-            theme,
         } = this.props;
         const {intl} = this.context;
+        const screen = 'SelectTimezone';
+        const title = intl.formatMessage({id: 'mobile.timezone_settings.select', defaultMessage: 'Select Timezone'});
+        const passProps = {
+            selectedTimezone: manualTimezone,
+            onBack: this.updateManualTimezone,
+        };
+
         this.goingBack = false;
 
-        navigator.push({
-            backButtonTitle: '',
-            screen: 'SelectTimezone',
-            title: intl.formatMessage({id: 'mobile.timezone_settings.select', defaultMessage: 'Select Timezone'}),
-            animated: true,
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                selectedTimezone: manualTimezone,
-                onBack: this.updateManualTimezone,
-            },
-        });
+        actions.goToScreen(screen, title, passProps);
     };
 
     render() {

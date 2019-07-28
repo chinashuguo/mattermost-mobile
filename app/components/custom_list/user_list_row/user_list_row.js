@@ -12,7 +12,10 @@ import {
 import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import ProfilePicture from 'app/components/profile_picture';
+import BotTag from 'app/components/bot_tag';
+import GuestTag from 'app/components/guest_tag';
 import {makeStyleSheetFromTheme, changeOpacity} from 'app/utils/theme';
+import {isGuest} from 'app/utils/users';
 import CustomListRow from 'app/components/custom_list/custom_list_row';
 
 export default class UserListRow extends React.PureComponent {
@@ -78,13 +81,23 @@ export default class UserListRow extends React.PureComponent {
                     </View>
                     <View style={style.textContainer}>
                         <View>
-                            <Text
-                                style={style.username}
-                                ellipsizeMode='tail'
-                                numberOfLines={1}
-                            >
-                                {usernameDisplay}
-                            </Text>
+                            <View style={style.indicatorContainer}>
+                                <Text
+                                    style={style.username}
+                                    ellipsizeMode='tail'
+                                    numberOfLines={1}
+                                >
+                                    {usernameDisplay}
+                                </Text>
+                                <BotTag
+                                    show={Boolean(user.is_bot)}
+                                    theme={theme}
+                                />
+                                <GuestTag
+                                    show={isGuest(user)}
+                                    theme={theme}
+                                />
+                            </View>
                         </View>
                         {showTeammateDisplay &&
                         <View>
@@ -139,6 +152,9 @@ const getStyleFromTheme = makeStyleSheetFromTheme((theme) => {
         username: {
             fontSize: 15,
             color: theme.centerChannelColor,
+        },
+        indicatorContainer: {
+            flexDirection: 'row',
         },
         deactivated: {
             marginTop: 2,

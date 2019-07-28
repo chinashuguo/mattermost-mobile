@@ -1,9 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import MockAsyncStorage from 'mock-async-storage';
 import {configure} from 'enzyme';
 import Adapter from 'enzyme-adapter-react-16';
 configure({adapter: new Adapter()});
+
+const mockImpl = new MockAsyncStorage();
+jest.mock('@react-native-community/async-storage', () => mockImpl);
 
 /* eslint-disable no-console */
 
@@ -38,8 +42,17 @@ jest.mock('react-native-device-info', () => {
         getVersion: () => '0.0.0',
         getBuildNumber: () => '0',
         getModel: () => 'iPhone X',
+        isTablet: () => false,
     };
 });
+
+jest.mock('react-native-cookies', () => ({
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    openURL: jest.fn(),
+    canOpenURL: jest.fn(),
+    getInitialURL: jest.fn(),
+}));
 
 let logs;
 let warns;
@@ -82,7 +95,13 @@ jest.mock('rn-fetch-blob', () => ({
             DocumentDir: () => jest.fn(),
             CacheDir: () => jest.fn(),
         },
+        exists: jest.fn(),
+        existsWithDiffExt: jest.fn(),
+        unlink: jest.fn(),
+        mv: jest.fn(),
     },
+    fetch: jest.fn(),
+    config: jest.fn(),
 }));
 
 jest.mock('rn-fetch-blob/fs', () => ({
@@ -90,6 +109,10 @@ jest.mock('rn-fetch-blob/fs', () => ({
         DocumentDir: () => jest.fn(),
         CacheDir: () => jest.fn(),
     },
+    exists: jest.fn(),
+    existsWithDiffExt: jest.fn(),
+    unlink: jest.fn(),
+    mv: jest.fn(),
 }));
 
 global.requestAnimationFrame = (callback) => {

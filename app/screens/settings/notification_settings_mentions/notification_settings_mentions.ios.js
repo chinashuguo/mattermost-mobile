@@ -20,25 +20,17 @@ import NotificationSettingsMentionsBase from './notification_settings_mention_ba
 
 class NotificationSettingsMentionsIos extends NotificationSettingsMentionsBase {
     goToNotificationSettingsMentionKeywords = () => {
-        const {intl, navigator, theme} = this.props;
+        const {actions, intl} = this.props;
         this.goingBack = false;
 
-        navigator.push({
-            backButtonTitle: '',
-            screen: 'NotificationSettingsMentionsKeywords',
-            title: intl.formatMessage({id: 'mobile.notification_settings_mentions.keywords', defaultMessage: 'Keywords'}),
-            animated: true,
-            navigatorStyle: {
-                navBarTextColor: theme.sidebarHeaderTextColor,
-                navBarBackgroundColor: theme.sidebarHeaderBg,
-                navBarButtonColor: theme.sidebarHeaderTextColor,
-                screenBackgroundColor: theme.centerChannelBg,
-            },
-            passProps: {
-                keywords: this.state.mention_keys,
-                onBack: this.updateMentionKeys,
-            },
-        });
+        const screen = 'NotificationSettingsMentionsKeywords';
+        const title = intl.formatMessage({id: 'mobile.notification_settings_mentions.keywords', defaultMessage: 'Keywords'});
+        const passProps = {
+            keywords: this.state.mention_keys,
+            onBack: this.updateMentionKeys,
+        };
+
+        actions.goToScreen(screen, title, passProps);
     };
 
     renderMentionSection(style) {
@@ -62,7 +54,7 @@ class NotificationSettingsMentionsIos extends NotificationSettingsMentionsBase {
                 headerDefaultMessage='WORDS THAT TRIGGER MENTIONS'
                 theme={theme}
             >
-                {currentUser.first_name.length > 0 &&
+                {currentUser.first_name?.length > 0 &&
                 <View>
                     <SectionItem
                         label={(

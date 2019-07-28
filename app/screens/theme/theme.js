@@ -26,12 +26,13 @@ export default class Theme extends React.PureComponent {
     static propTypes = {
         actions: PropTypes.shape({
             savePreferences: PropTypes.func.isRequired,
+            applyTheme: PropTypes.func.isRequired,
         }).isRequired,
+        componentId: PropTypes.string,
         allowedThemes: PropTypes.arrayOf(PropTypes.object),
         customTheme: PropTypes.object,
         isLandscape: PropTypes.bool.isRequired,
         isTablet: PropTypes.bool.isRequired,
-        navigator: PropTypes.object.isRequired,
         teamId: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
         userId: PropTypes.string.isRequired,
@@ -56,12 +57,17 @@ export default class Theme extends React.PureComponent {
 
     componentDidUpdate(prevProps) {
         if (prevProps.theme !== this.props.theme) {
-            setNavigatorStyles(this.props.navigator, this.props.theme);
+            setNavigatorStyles(this.props.componentId, this.props.theme);
         }
     }
 
     setTheme = (key) => {
-        const {userId, teamId, actions: {savePreferences}, allowedThemes} = this.props;
+        const {
+            userId,
+            teamId,
+            allowedThemes,
+            actions: {savePreferences, applyTheme},
+        } = this.props;
         const {customTheme} = this.state;
         const selectedTheme = allowedThemes.concat(customTheme).find((theme) => theme.key === key);
 
@@ -71,6 +77,7 @@ export default class Theme extends React.PureComponent {
             name: teamId,
             value: JSON.stringify(selectedTheme),
         }]);
+        applyTheme();
     }
 
     renderAllowedThemeTiles = () => {

@@ -9,15 +9,19 @@ import {
     Linking,
     Platform,
     StyleSheet,
-    TouchableWithoutFeedback,
     TouchableOpacity,
-    View,
+    StatusBar,
 } from 'react-native';
 import {YouTubeStandaloneAndroid, YouTubeStandaloneIOS} from 'react-native-youtube';
 import {intlShape} from 'react-intl';
 
+import EventEmitter from 'mattermost-redux/utils/event_emitter';
+
+import {TABLET_WIDTH} from 'app/components/sidebars/drawer_layout';
+import PostAttachmentImage from 'app/components/post_attachment_image';
 import ProgressiveImage from 'app/components/progressive_image';
 
+import {DeviceTypes} from 'app/constants';
 import CustomPropTypes from 'app/constants/custom_prop_types';
 import ImageCacheManager from 'app/utils/image_cache_manager';
 import {previewImageAtIndex, calculateDimensions} from 'app/utils/images';
@@ -34,6 +38,7 @@ export default class PostBodyAdditionalContent extends PureComponent {
     static propTypes = {
         actions: PropTypes.shape({
             getRedirectLocation: PropTypes.func.isRequired,
+            showModalOverCurrentContext: PropTypes.func.isRequired,
         }).isRequired,
         baseTextStyle: CustomPropTypes.Style,
         blockStyles: PropTypes.object,
@@ -44,7 +49,6 @@ export default class PostBodyAdditionalContent extends PureComponent {
         isReplyPost: PropTypes.bool,
         link: PropTypes.string,
         message: PropTypes.string.isRequired,
-        navigator: PropTypes.object.isRequired,
         onHashtagPress: PropTypes.func,
         onPermalinkPress: PropTypes.func,
         openGraphData: PropTypes.object,
@@ -157,6 +161,10 @@ export default class PostBodyAdditionalContent extends PureComponent {
         const deviceSize = deviceWidth > deviceHeight ? deviceHeight : deviceWidth;
         let maxWidth = deviceSize - 78;
 
+        if (maxWidth > MAX_YOUTUBE_IMAGE_WIDTH) {
+            maxWidth = MAX_YOUTUBE_IMAGE_WIDTH;
+        }
+
         if (height <= MAX_YOUTUBE_IMAGE_HEIGHT) {
             maxHeight = height;
         } else {
@@ -174,11 +182,12 @@ export default class PostBodyAdditionalContent extends PureComponent {
     };
 
     generateStaticEmbed = (isYouTube, isImage) => {
-        if (isYouTube || isImage) {
+        const {isReplyPost, link, metadata, openGraphData, showLinkPreviews, theme} = this.props;
+
+        if (isYouTube || (isImage && !openGraphData)) {
             return null;
         }
 
-        const {isReplyPost, link, metadata, navigator, openGraphData, showLinkPreviews, theme} = this.props;
         const attachments = this.getMessageAttachment();
         if (attachments) {
             return attachments;
@@ -197,9 +206,8 @@ export default class PostBodyAdditionalContent extends PureComponent {
                 <PostAttachmentOpenGraph
                     isReplyPost={isReplyPost}
                     link={link}
-                    navigator={navigator}
                     openGraphData={openGraphData}
-                    imageMetadata={metadata && metadata.images}
+                    imagesMetadata={metadata && metadata.images}
                     theme={theme}
                 />
             );
@@ -215,7 +223,6 @@ export default class PostBodyAdditionalContent extends PureComponent {
             link = shortenedLink;
         }
         const {width, height, uri} = this.state;
-        const imgHeight = height;
 
         if (link) {
             if (isYouTube) {
@@ -225,14 +232,13 @@ export default class PostBodyAdditionalContent extends PureComponent {
 
                 return (
                     <TouchableOpacity
-                        style={[styles.imageContainer, {height: imgHeight || MAX_YOUTUBE_IMAGE_HEIGHT}]}
-                        {...this.responder}
+                        style={[styles.imageContainer, {height: height || MAX_YOUTUBE_IMAGE_HEIGHT}]}
                         onPress={this.playYouTubeVideo}
                     >
                         <ProgressiveImage
                             isBackgroundImage={true}
                             imageUri={imgUrl}
-                            style={[styles.image, {width: width || MAX_YOUTUBE_IMAGE_WIDTH, height: imgHeight || MAX_YOUTUBE_IMAGE_HEIGHT}]}
+                            style={[styles.image, {width: width || MAX_YOUTUBE_IMAGE_WIDTH, height: height || MAX_YOUTUBE_IMAGE_HEIGHT}]}
                             thumbnailUri={thumbUrl}
                             resizeMode='cover'
                             onError={this.handleLinkLoadError}
@@ -252,22 +258,17 @@ export default class PostBodyAdditionalContent extends PureComponent {
             }
 
             if (isImage) {
+                const imageMetadata = this.props.metadata?.images?.[link];
+
                 return (
-                    <TouchableWithoutFeedback
-                        onPress={this.handlePreviewImage}
-                        style={[styles.imageContainer, {height: imgHeight || MAX_YOUTUBE_IMAGE_HEIGHT}]}
-                        {...this.responder}
-                    >
-                        <View ref='item'>
-                            <ProgressiveImage
-                                ref='image'
-                                style={[styles.image, {width, height: imgHeight || MAX_YOUTUBE_IMAGE_HEIGHT}]}
-                                defaultSource={{uri}}
-                                resizeMode='contain'
-                                onError={this.handleLinkLoadError}
-                            />
-                        </View>
-                    </TouchableWithoutFeedback>
+                    <PostAttachmentImage
+                        height={height || MAX_YOUTUBE_IMAGE_HEIGHT}
+                        imageMetadata={imageMetadata}
+                        onImagePress={this.handlePreviewImage}
+                        onError={this.handleLinkLoadError}
+                        uri={uri}
+                        width={width}
+                    />
                 );
             }
         }
@@ -297,7 +298,10 @@ export default class PostBodyAdditionalContent extends PureComponent {
     getViewPortWidth = (props) => {
         const {deviceHeight, deviceWidth, isReplyPost} = props;
         const deviceSize = deviceWidth > deviceHeight ? deviceHeight : deviceWidth;
-        return deviceSize - VIEWPORT_IMAGE_OFFSET - (isReplyPost ? VIEWPORT_IMAGE_REPLY_OFFSET : 0);
+        const viewPortWidth = deviceSize - VIEWPORT_IMAGE_OFFSET - (isReplyPost ? VIEWPORT_IMAGE_REPLY_OFFSET : 0);
+        const tabletOffset = DeviceTypes.IS_TABLET ? TABLET_WIDTH : 0;
+
+        return viewPortWidth - tabletOffset;
     };
 
     setImageSize = (uri, originalWidth, originalHeight) => {
@@ -338,7 +342,6 @@ export default class PostBodyAdditionalContent extends PureComponent {
             deviceHeight,
             deviceWidth,
             metadata,
-            navigator,
             onHashtagPress,
             onPermalinkPress,
             textStyles,
@@ -359,7 +362,6 @@ export default class PostBodyAdditionalContent extends PureComponent {
                     deviceHeight={deviceHeight}
                     deviceWidth={deviceWidth}
                     metadata={metadata}
-                    navigator={navigator}
                     postId={postId}
                     textStyles={textStyles}
                     theme={theme}
@@ -405,10 +407,10 @@ export default class PostBodyAdditionalContent extends PureComponent {
         this.setState({linkLoadError: true});
     };
 
-    handlePreviewImage = () => {
+    handlePreviewImage = (imageRef) => {
         const {shortenedLink} = this.state;
         let {link} = this.props;
-        const {navigator} = this.props;
+        const {actions} = this.props;
         if (shortenedLink) {
             link = shortenedLink;
         }
@@ -430,7 +432,7 @@ export default class PostBodyAdditionalContent extends PureComponent {
             },
         }];
 
-        previewImageAtIndex(navigator, [this.refs.item], 0, files);
+        previewImageAtIndex([imageRef], 0, files, actions.showModalOverCurrentContext);
     };
 
     playYouTubeVideo = () => {
@@ -441,6 +443,7 @@ export default class PostBodyAdditionalContent extends PureComponent {
         if (Platform.OS === 'ios') {
             YouTubeStandaloneIOS.
                 playVideo(videoId, startTime).
+                then(this.playYouTubeVideoEnded).
                 catch(this.playYouTubeVideoError);
         } else {
             const {googleDeveloperKey} = this.props;
@@ -455,6 +458,13 @@ export default class PostBodyAdditionalContent extends PureComponent {
             } else {
                 Linking.openURL(link);
             }
+        }
+    };
+
+    playYouTubeVideoEnded = () => {
+        if (Platform.OS === 'ios') {
+            StatusBar.setHidden(false);
+            EventEmitter.emit('update_safe_area_view');
         }
     };
 

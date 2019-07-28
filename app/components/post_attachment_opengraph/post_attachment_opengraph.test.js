@@ -25,10 +25,11 @@ describe('PostAttachmentOpenGraph', () => {
     const baseProps = {
         actions: {
             getOpenGraphMetadata: jest.fn(),
+            showModalOverCurrentContext: jest.fn(),
         },
         deviceHeight: 600,
         deviceWidth: 400,
-        imageMetadata: {
+        imagesMetadata: {
             'https://www.mattermost.org/wp-content/uploads/2016/03/logoHorizontal_WS.png': {
                 width: 1165,
                 height: 265,
@@ -36,7 +37,6 @@ describe('PostAttachmentOpenGraph', () => {
         },
         isReplyPost: false,
         link: 'https://mattermost.com/',
-        navigator: {},
         theme: Preferences.THEMES.default,
     };
 

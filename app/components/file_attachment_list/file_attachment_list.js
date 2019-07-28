@@ -4,8 +4,6 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import {
-    Keyboard,
-    Platform,
     ScrollView,
     StyleSheet,
 } from 'react-native';
@@ -13,22 +11,25 @@ import {
 import {Client4} from 'mattermost-redux/client';
 
 import {isDocument, isGif, isVideo} from 'app/utils/file';
-import {getCacheFile} from 'app/utils/image_cache_manager';
+import ImageCacheManager from 'app/utils/image_cache_manager';
 import {previewImageAtIndex} from 'app/utils/images';
 import {preventDoubleTap} from 'app/utils/tap';
+import {emptyFunction} from 'app/utils/general';
 
 import FileAttachment from './file_attachment';
 
 export default class FileAttachmentList extends Component {
     static propTypes = {
-        actions: PropTypes.object.isRequired,
+        actions: PropTypes.shape({
+            loadFilesForPostIfNecessary: PropTypes.func.isRequired,
+            showModalOverCurrentContext: PropTypes.func.isRequired,
+        }).isRequired,
         canDownloadFiles: PropTypes.bool.isRequired,
         deviceHeight: PropTypes.number.isRequired,
         deviceWidth: PropTypes.number.isRequired,
         fileIds: PropTypes.array.isRequired,
         files: PropTypes.array,
         isFailed: PropTypes.bool,
-        navigator: PropTypes.object,
         onLongPress: PropTypes.func,
         postId: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
@@ -99,18 +100,12 @@ export default class FileAttachmentList extends Component {
                 }
 
                 let uri;
-                let cache;
                 if (file.localPath) {
                     uri = file.localPath;
                 } else if (isGif(file)) {
-                    cache = await getCacheFile(file.name, Client4.getFileUrl(file.id)); // eslint-disable-line no-await-in-loop
+                    uri = await ImageCacheManager.cache(file.name, Client4.getFileUrl(file.id), emptyFunction); // eslint-disable-line no-await-in-loop
                 } else {
-                    cache = await getCacheFile(file.name, Client4.getFilePreviewUrl(file.id)); // eslint-disable-line no-await-in-loop
-                }
-
-                if (cache) {
-                    const prefix = Platform.OS === 'android' ? 'file://' : '';
-                    uri = `${prefix}${cache.path}`;
+                    uri = await ImageCacheManager.cache(file.name, Client4.getFilePreviewUrl(file.id), emptyFunction); // eslint-disable-line no-await-in-loop
                 }
 
                 results.push({
@@ -129,12 +124,12 @@ export default class FileAttachmentList extends Component {
     };
 
     handlePreviewPress = preventDoubleTap((idx) => {
-        Keyboard.dismiss();
-        previewImageAtIndex(this.props.navigator, this.items, idx, this.galleryFiles);
+        const {actions} = this.props;
+        previewImageAtIndex(this.items, idx, this.galleryFiles, actions.showModalOverCurrentContext);
     });
 
     renderItems = () => {
-        const {canDownloadFiles, deviceWidth, fileIds, files, navigator} = this.props;
+        const {canDownloadFiles, deviceWidth, fileIds, files} = this.props;
 
         if (!files.length && fileIds.length > 0) {
             return fileIds.map((id, idx) => (
@@ -164,7 +159,6 @@ export default class FileAttachmentList extends Component {
                     file={f}
                     id={file.id}
                     index={idx}
-                    navigator={navigator}
                     onCaptureRef={this.handleCaptureRef}
                     onPreviewPress={this.handlePreviewPress}
                     onLongPress={this.props.onLongPress}
@@ -182,6 +176,7 @@ export default class FileAttachmentList extends Component {
                 horizontal={true}
                 scrollEnabled={fileIds.length > 1}
                 style={[(isFailed && styles.failed)]}
+                keyboardShouldPersistTaps={'always'}
             >
                 {this.renderItems()}
             </ScrollView>
